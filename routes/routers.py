@@ -1,4 +1,5 @@
 from datetime import datetime
+from utils.configs import get_telnet_config
 from utils.session_auth import validate_session
 from utils.decorators import netapi_decorator
 from flask import Response, make_response, request
@@ -20,34 +21,41 @@ def add_user_to_router(log = None):
     if type(session_data) is Response:
         return session_data
     request_body = request.get_json()
-    host = request_body["host"]
-    ip = request_body["ip"]
+    hosts = request_body["hosts"]
     usr_to_add = request_body["username"]
     usr_pwd_to_add = request_body["pwd"]
     privilege = request_body["privilege"]
-    log.info(f"Añadiendo usuario {usr_to_add} al router con IP: {ip}")
+    last_host = hosts[len(hosts)-1]
+    log.info(f"Añadiendo usuario {usr_to_add} al router con IP: {last_host['ip']}")
     # Verificar si se va a hacer por SSH y en el caso, obtener las credenciales
-    if ["ssh_usr", "ssh_pwd"] in request_body:
+    if ("ssh_usr", "ssh_pwd") in request_body:
         #Hacerlo por SSH
         pass
     else:
         #Hacerlo via telnet con la cuenta por defecto de todos los routers 
-        telnet_usr = request_body["telnet_usr"]
-        telnet_pwd = request_body["telnet_pwd"]
-        prompt = f"{host}#"
+        telnet_usr, telnet_pwd = get_telnet_config()
         try:
-            log.info("Enviando comandos al router")
-            child = pexpect.spawn(f"telnet {ip}")
+            log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+            child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
             child.expect("Username:")
             child.sendline(telnet_usr)
             child.expect("Password:")
             child.sendline(telnet_pwd)
-            child.expect(prompt)
-            child.send(f"username {usr_to_add} privilege {privilege} password {usr_pwd_to_add}")
-            child.expect(prompt)
+            child.expect(hosts[0]['host'])
+            # Siguientes hosts
+            for i in range(1,len(hosts)):
+                log.info(f"Moving to {hosts[i]['ip']}")
+                child.sendline(f"telnet {hosts[i]['ip']}")
+                child.expect("Username:")
+                child.sendline(telnet_usr)
+                child.expect("Password:")
+                child.sendline(telnet_pwd)
+            child.sendline("config t")
+            child.sendline(f"username {usr_to_add} privilege {privilege} password {usr_pwd_to_add}")
+            child.expect(last_host['host'])
             child.sendline("end")
-            child.sendline("copy run start")
-            child.sendline("")
+            child.sendline("wr mem")
+            child.expect(last_host['host'])
             child.close()
             log.info(f"Se ha terminado de añadir el usuario")
             return make_response({"message": "Se ha agregado el usuario al router"}, 200)
@@ -64,35 +72,42 @@ def update_user_from_router(log=None):
     if type(session_data) is Response:
         return session_data
     request_body = request.get_json()
-    host = request_body["host"]
-    ip = request_body["ip"]
+    hosts = request_body["hosts"]
     usr_to_update = request_body["username"]
     new_pwd = request_body["pwd"]
     privilege = request_body["privilege"]
-    log.info(f"Modificando usuario {usr_to_update} del router con IP: {ip}")
+    last_host = hosts[len(hosts)-1]
+    log.info(f"Modificando usuario {usr_to_update} en el router con IP: {last_host['ip']}")
     # Verificar si se va a hacer por SSH y en el caso, obtener las credenciales
-    if ["ssh_usr", "ssh_pwd"] in request_body:
+    if ("ssh_usr", "ssh_pwd") in request_body:
         #Hacerlo por SSH
         pass
     else:
-        #Hacerlo via telnet con la cuenta por defecto de todos los routers
-        telnet_usr = request_body["telnet_usr"]
-        telnet_pwd = request_body["telnet_pwd"]
-        prompt = f"{host}#"
+        #Hacerlo via telnet con la cuenta por defecto de todos los routers 
+        telnet_usr, telnet_pwd = get_telnet_config()
         try:
-            log.info("Enviando comandos al router")
-            child = pexpect.spawn(f"telnet {ip}")
+            log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+            child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
             child.expect("Username:")
             child.sendline(telnet_usr)
             child.expect("Password:")
             child.sendline(telnet_pwd)
-            child.expect(prompt)
-            child.send(
-                f"username {usr_to_update} privilege {privilege} password {new_pwd}")
-            child.expect(prompt)
+            child.expect(hosts[0]['host'])
+            # Siguientes hosts
+            for i in range(1,len(hosts)):
+                log.info(f"Moving to {hosts[i]['ip']}")
+                child.sendline(f"telnet {hosts[i]['ip']}")
+                child.expect("Username:")
+                child.sendline(telnet_usr)
+                child.expect("Password:")
+                child.sendline(telnet_pwd)
+            child.sendline("config t")
+            child.expect(last_host["host"])
+            child.sendline(f"username {usr_to_update} privilege {privilege} password {new_pwd}")
+            child.expect(last_host["host"])
             child.sendline("end")
-            child.sendline("copy run start")
-            child.sendline("")
+            child.sendline("wr mem")
+            child.expect(last_host['host'])
             child.close()
             log.info(f"Se ha terminado de modificar el usuario")
             return make_response({"message": "Se ha modificado el usuario del router"}, 200)
@@ -109,33 +124,41 @@ def delete_user_from_router(log=None):
     if type(session_data) is Response:
         return session_data
     request_body = request.get_json()
-    host = request_body["host"]
-    ip = request_body["ip"]
+    hosts = request_body["hosts"]
     usr_to_delete = request_body["username"]
     usr_pwd_to_delete = request_body["pwd"]
-    log.info(f"Eliminando usuario {usr_to_delete} del router con IP: {ip}")
+    last_host = hosts[len(hosts)-1]
+    log.info(f"Eliminando usuario {usr_to_delete} del router con IP: {last_host['ip']}")
     # Verificar si se va a hacer por SSH y en el caso, obtener las credenciales
-    if ["ssh_usr", "ssh_pwd"] in request_body:
+    if ("ssh_usr", "ssh_pwd") in request_body:
         #Hacerlo por SSH
         pass
     else:
         #Hacerlo via telnet con la cuenta por defecto de todos los routers
-        telnet_usr = request_body["telnet_usr"]
-        telnet_pwd = request_body["telnet_pwd"]
-        prompt = f"{host}#"
+        telnet_usr, telnet_pwd = get_telnet_config()
         try:
-            log.info("Enviando comandos al router")
-            child = pexpect.spawn(f"telnet {ip}")
+            log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+            child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
             child.expect("Username:")
             child.sendline(telnet_usr)
             child.expect("Password:")
             child.sendline(telnet_pwd)
-            child.expect(prompt)
-            child.send(f"no username {usr_to_delete} password {usr_pwd_to_delete}")
-            child.expect(prompt)
+            child.expect(hosts[0]['host'])
+            # Siguientes hosts
+            for i in range(1,len(hosts)):
+                log.info(f"Moving to {hosts[i]['ip']}")
+                child.sendline(f"telnet {hosts[i]['ip']}")
+                child.expect("Username:")
+                child.sendline(telnet_usr)
+                child.expect("Password:")
+                child.sendline(telnet_pwd)
+            child.sendline("config t")
+            child.expect(last_host["host"])
+            child.sendline(f"no username {usr_to_delete} password {usr_pwd_to_delete}")
+            child.expect(last_host["host"])
             child.sendline("end")
-            child.sendline("copy run start")
-            child.sendline("")
+            child.sendline("wr mem")
+            child.expect(last_host['host'])
             child.close()
             log.info(f"Se ha terminado de eliminar el usuario")
             return make_response({"message": "Se ha eliminado el usuario del router"}, 200)
@@ -154,45 +177,82 @@ def modify_router_protocol(log = None):
         return session_data
 
     request_body = request.get_json()
-    host = request_body["host"]
-    ip = request_body["ip"]
+    hosts = request_body["hosts"]
     protocol = request_body["protocol"]
-    log.info(f"Modificando protocolo en el router: {ip}")
+    networks = request_body["networks"]
+    last_host = hosts[len(hosts)-1]
+    log.info(f"Modificando protocolo en el router con IP: {last_host['ip']}")
     # Verificar si se va a hacer por SSH y en el caso, obtener las credenciales
-    if ["ssh_usr", "ssh_pwd"] in request_body:
+    if ("ssh_usr", "ssh_pwd") in request_body:
         #Hacerlo por SSH
         pass
     else:
         #Hacerlo via telnet con la cuenta por defecto de todos los routers
-        telnet_usr = request_body["telnet_usr"]
-        telnet_pwd = request_body["telnet_pwd"]
-        prompt = f"{host}#"
+        telnet_usr, telnet_pwd = get_telnet_config()
         try:
-            log.info("Enviando comandos al router")
-            child = pexpect.spawn(f"telnet {ip}")
+            log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+            child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
             child.expect("Username:")
             child.sendline(telnet_usr)
             child.expect("Password:")
             child.sendline(telnet_pwd)
-            child.expect(prompt)
-            log.info("Determinando los protocolos activos")
-            child.sendline("show ip route")
-            child.expect(prompt)
-            sh_ip_rt = child.before.decode()
-
+            child.expect(hosts[0]['host'])
+            # Siguientes hosts
+            for i in range(1,len(hosts)):
+                log.info(f"Moving to {hosts[i]['ip']}")
+                child.sendline(f"telnet {hosts[i]['ip']}")
+                child.expect("Username:")
+                child.sendline(telnet_usr)
+                child.expect("Password:")
+                child.sendline(telnet_pwd)
             
+            # Router de destino
+            child.sendline("terminal length 0")
+            child.expect(last_host["host"])
+            log.info("Obteniendo protocolos del router")
+            child.sendline("show ip protocol")
+            child.expect(last_host["host"])
+            modified = False
+            protocol_info = child.before.decode()
+            child.sendline("conf t")
+            child.expect(last_host["host"])
+            if protocol_info != "":
+                log.info("Se ha encontrado valores de protocolos")
+                protocol_info = protocol_info.split("\n")
+                routing_protocols_data = [x for x in protocol_info if x.startswith("Routing Protocol")]
+                protocols_in_router = []
+                for prot in routing_protocols_data:
+                    temp_p = prot.split(" ")[3]
+                    temp_p = temp_p.replace("\r", "")
+                    temp_p = temp_p.replace("\"", "")
+                    protocols_in_router.append(temp_p)
+                
+                modified = len(protocols_in_router) > 0
+                log.info(f"Protocolos encontrado: {', '.join(protocols_in_router)}")
+                for pt_rt in protocols_in_router:
+                    log.info(f"Eliminando protocolo: {pt_rt}")
+                    child.sendline(f"no router {pt_rt}")
+                    child.expect(last_host["host"])
 
-            #child.send(f"config t")
-            child.expect(prompt)
-            child.sendline("")
+            if protocol == "rip":
+                log.info("Anadiendo protocolo rip")
+                child.sendline("router rip")
+                child.sendline("ver 2")
+            if protocol.startswith("ospf") or protocol.startswith("eigrp"):
+                log.info(f"Anadiendo protocolo {protocol}")
+                child.sendline(f"router {protocol}")
+                child.expect(last_host["host"])
 
+            for net in networks:
+                child.sendline(f"net {net}")
+                child.expect(last_host["host"])
 
             child.sendline("end")
-            child.sendline("copy run start")
-            child.sendline("")
+            child.expect(last_host["host"])
+            child.sendline("wr mem")
             child.close()
-            log.info(f"Se ha terminado de añadir el usuario")
-            return make_response({"message": "Se ha agregado el usuario al router"}, 200)
+           
+            return make_response({"message": "Se ha modificado el protocolo existente" if modified else "Se ha anadido el protocolo"}, 200)
         except pexpect.TIMEOUT:
             log.warning(f"Tiempo de espera excedido")
             return make_response({"error": "Tiempo de espera en el router excedido"}, 500)

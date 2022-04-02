@@ -22,6 +22,16 @@ def get_mongo_config():
     else:
         print(def_msg_err + " [MONGO]")
 
+def get_telnet_config():
+    if not parser.read(route):
+        print(def_msg_err)
+    if parser.has_option("TELNET", "usr") and parser.has_option("TELNET", "pwd"):
+        usr = decrypt_data(parser.get("TELNET", "usr"))
+        pwd = decrypt_data(parser.get("TELNET", "pwd"))
+        return usr, pwd
+    else:
+        print(def_msg_err + " [TELNET]")
+
 
 if __name__ == "__main__":
     # Reservado para pruebas
