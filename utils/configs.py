@@ -22,15 +22,15 @@ def get_mongo_config():
     else:
         print(def_msg_err + " [MONGO]")
 
-def get_telnet_config():
+def get_gns3_config():
     if not parser.read(route):
         print(def_msg_err)
-    if parser.has_option("TELNET", "usr") and parser.has_option("TELNET", "pwd"):
-        usr = decrypt_data(parser.get("TELNET", "usr"))
-        pwd = decrypt_data(parser.get("TELNET", "pwd"))
+    if parser.has_option("GNS3", "usr") and parser.has_option("GNS3", "pwd"):
+        usr = decrypt_data(parser.get("GNS3", "usr"))
+        pwd = decrypt_data(parser.get("GNS3", "pwd"))
         return usr, pwd
     else:
-        print(def_msg_err + " [TELNET]")
+        print(def_msg_err + " [GNS3]")
 
 
 if __name__ == "__main__":

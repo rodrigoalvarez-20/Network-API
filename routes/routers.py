@@ -1,9 +1,34 @@
 from datetime import datetime
-from utils.configs import get_telnet_config
+from utils.configs import get_gns3_config
 from utils.session_auth import validate_session
 from utils.decorators import netapi_decorator
 from flask import Response, make_response, request
 import pexpect
+from pexpect import pxssh
+
+@netapi_decorator("routers")
+def move_into_routers(child, routers_list, usr, pwd, method, log = None):
+    """
+    Funcion que permite moverse entre routers, utilizando el protocolo especificado
+    @param child: Instancia de spawn o pxssh
+    @param routers_list: Lista de routers que se tiene que iterar
+    @param usr: Usuario por defecto de telnet y ssh
+    @param pwd: Pwd por defecto de telnet y ssh
+    @param method: Metodo a utilizar para la conexion (ssh o telnet)
+    """
+    for i in range(1,len(routers_list)): # Itera cada uno de los elementos (routers) desde 1 hasta el final
+        log.info(f"Moving to {routers_list[i]['ip']}")
+        if method == "ssh":
+            child.sendline(f"ssh -l {usr} {routers_list[i]['ip']}") #Enviamos el comando ssh por la terminal del router
+            child.expect("Password:")
+            child.sendline(pwd)
+        elif method == "telnet":
+            child.sendline(f"telnet {routers_list[i]['ip']}") #Hacemos la conexion telnet directa
+            child.expect("Username:")
+            child.sendline(usr)
+            child.expect("Password:")
+            child.sendline(pwd)
+
 
 @netapi_decorator("network", "devices")
 def list_devices_in_db(log = None, db = None):
@@ -25,46 +50,46 @@ def add_user_to_router(log = None):
     usr_to_add = request_body["username"]
     usr_pwd_to_add = request_body["pwd"]
     privilege = request_body["privilege"]
+    con_method = request_body["method"]
     last_host = hosts[len(hosts)-1]
     log.info(f"Añadiendo usuario {usr_to_add} al router con IP: {last_host['ip']}")
-    # Verificar si se va a hacer por SSH y en el caso, obtener las credenciales
-    if ("ssh_usr", "ssh_pwd") in request_body:
-        #Hacerlo por SSH
-        pass
-    else:
-        #Hacerlo via telnet con la cuenta por defecto de todos los routers 
-        telnet_usr, telnet_pwd = get_telnet_config()
-        try:
-            log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+    gns3_usr, gns3_pwd = get_gns3_config()
+    try:
+        log.info(f"Enviando comandos al router: {hosts[0]['ip']}")
+        if con_method == "ssh":
+            # Primer inicio de sesion via ssh al primer router
+            child = pxssh.pxssh()
+            child.login(hosts[0]["ip"], gns3_usr, gns3_pwd, auto_prompt_reset=False)
+        else:
+            # Inicio de sesion via telnet al primer router
             child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
             child.expect("Username:")
-            child.sendline(telnet_usr)
+            child.sendline(gns3_usr)
             child.expect("Password:")
-            child.sendline(telnet_pwd)
+            child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
-            # Siguientes hosts
-            for i in range(1,len(hosts)):
-                log.info(f"Moving to {hosts[i]['ip']}")
-                child.sendline(f"telnet {hosts[i]['ip']}")
-                child.expect("Username:")
-                child.sendline(telnet_usr)
-                child.expect("Password:")
-                child.sendline(telnet_pwd)
-            child.sendline("config t")
-            child.sendline(f"username {usr_to_add} privilege {privilege} password {usr_pwd_to_add}")
-            child.expect(last_host['host'])
-            child.sendline("end")
-            child.sendline("wr mem")
-            child.expect(last_host['host'])
-            child.close()
-            log.info(f"Se ha terminado de añadir el usuario")
-            return make_response({"message": "Se ha agregado el usuario al router"}, 200)
-        except pexpect.TIMEOUT:
-            log.warning(f"Tiempo de espera excedido")
-            return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
-        except Exception as ex:
-            log.error(str(ex))
-            return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+
+        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
+
+        # Empezamos a ejecutar los comandos necesarios
+        child.sendline("config t")
+        child.sendline(f"username {usr_to_add} privilege {privilege} password {usr_pwd_to_add}")
+        child.expect(last_host['host'])
+        child.sendline("end")
+        child.sendline("wr mem") # Algo mejor que copy run start
+        child.expect(last_host['host'])
+        log.debug("Closing session")
+        child.close(force=True) # Mandamos un close con force para que cierre el proceso padre, por ende tambien los hijos
+        
+        log.info(f"Se ha terminado de añadir el usuario via {con_method}")
+        return make_response({"message": "Se ha agregado el usuario al router"}, 200)
+
+    except pexpect.TIMEOUT:
+        log.warning(f"Tiempo de espera excedido")
+        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+    except Exception as ex:
+        log.error(str(ex))
+        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
 
 @netapi_decorator("network")
 def update_user_from_router(log=None):
