@@ -369,4 +369,4 @@ def modify_router_settings(log = None):
 
 @netapi_decorator("network")
 def activate_ssh_in_router(log = None):
-    
+    pass
