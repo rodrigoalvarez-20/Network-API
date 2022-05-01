@@ -32,7 +32,6 @@ def generate_login_token(id: str, email : str):
         tk = jwt.encode(payload, key.read(), algorithm="RS256")
         return tk
 
-
 def auth(token: str):
     try:
         with open(pKey, "r", encoding="utf-8") as key:
