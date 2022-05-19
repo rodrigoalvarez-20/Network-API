@@ -1,5 +1,5 @@
 from datetime import datetime
-from utils.configs import get_gns3_config
+from utils.configs import get_gns3_config, get_gns3_ssh_config
 from utils.session_auth import validate_session
 from utils.decorators import netapi_decorator
 from flask import Response, make_response, request
@@ -59,6 +59,7 @@ def delete_protocols_from_router(child, host, protocols_list, log = None):
         child.sendline(f"no router {pt_rt}")
         child.expect(host)
 
+# Esta probablemente la tenga que borrar
 @netapi_decorator("network", "devices")
 def list_devices_in_db(log = None, db = None):
     session_data = validate_session()
@@ -71,9 +72,9 @@ def list_devices_in_db(log = None, db = None):
 
 @netapi_decorator("network")
 def add_user_to_router(log = None):
-    """  session_data = validate_session()
+    session_data = validate_session()
     if type(session_data) is Response:
-        return session_data """
+        return session_data
     request_body = request.get_json()
     hosts = request_body["hosts"]
     usr_to_add = request_body["username"]
@@ -98,7 +99,8 @@ def add_user_to_router(log = None):
             child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
 
-        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
 
         # Empezamos a ejecutar los comandos necesarios
         child.sendline("config t")
@@ -123,9 +125,9 @@ def add_user_to_router(log = None):
 
 @netapi_decorator("network")
 def update_user_from_router(log=None):
-    """ session_data = validate_session()
+    session_data = validate_session()
     if type(session_data) is Response:
-        return session_data """
+        return session_data
     request_body = request.get_json()
     hosts = request_body["hosts"]
     usr_to_update = request_body["username"]
@@ -149,7 +151,8 @@ def update_user_from_router(log=None):
             child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
 
-        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
 
         child.sendline("config t")
         child.expect(last_host["host"])
@@ -172,9 +175,9 @@ def update_user_from_router(log=None):
 
 @netapi_decorator("network")
 def delete_user_from_router(log=None):
-    """ session_data = validate_session()
+    session_data = validate_session()
     if type(session_data) is Response:
-        return session_data """
+        return session_data
     request_body = request.get_json()
     hosts = request_body["hosts"]
     usr_to_delete = request_body["username"]
@@ -198,7 +201,8 @@ def delete_user_from_router(log=None):
             child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
 
-        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
 
         child.sendline("config t")
         child.expect(last_host["host"])
@@ -220,9 +224,9 @@ def delete_user_from_router(log=None):
     
 @netapi_decorator("network")
 def modify_router_protocol(log = None):
-    """ session_data = validate_session()
+    session_data = validate_session()
     if type(session_data) is Response:
-        return session_data """
+        return session_data
 
     request_body = request.get_json()
     hosts = request_body["hosts"]
@@ -247,7 +251,8 @@ def modify_router_protocol(log = None):
             child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
 
-        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
 
         child.expect(last_host["host"])
 
@@ -288,6 +293,9 @@ def modify_router_protocol(log = None):
     
 @netapi_decorator("network")
 def modify_router_settings(log = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
     request_body = request.get_json()
     hosts = request_body["hosts"]
     hostname = request_body["hostname"] if "hostname" in request_body else None
@@ -310,10 +318,9 @@ def modify_router_settings(log = None):
             child.expect("Password:")
             child.sendline(gns3_pwd)
             child.expect(hosts[0]['host'])
-
-        move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
-
-        child.expect(last_host["host"])
+        
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, con_method)
 
         # Configuramos los parametros enviados
         child.sendline("config t")
@@ -342,7 +349,7 @@ def modify_router_settings(log = None):
                     log.debug(f"Se ha eliminado IP de la interfaz {interface['name']}")
                     child.sendline("no ip add *")
                     child.expect(last_host["host"])
-                elif "power":
+                elif "power" in interface:
                     log.debug(f"Se ha encendido la interfaz {interface['name']}")
                     child.sendline("no shut")
                     child.expect(expect_host)
@@ -369,4 +376,59 @@ def modify_router_settings(log = None):
 
 @netapi_decorator("network")
 def activate_ssh_in_router(log = None):
-    pass
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+    
+    request_body = request.get_json()
+    hosts = request_body["hosts"]
+    last_host = hosts[len(hosts)-1]
+    log.info(f"Activando SSH en el router con IP: {last_host['ip']}")
+    gns3_usr, gns3_pwd = get_gns3_config()
+    try:
+        child = pexpect.spawn(f"telnet {hosts[0]['ip']}")
+        child.expect("Username:")
+        child.sendline(gns3_usr)
+        child.expect("Password:")
+        child.sendline(gns3_pwd)
+        child.expect(hosts[0]['host'])
+
+        if len(hosts) > 1:
+            move_into_routers(child, hosts, gns3_usr, gns3_pwd, "telnet")
+
+        child.expect(last_host["host"])
+        # Verificar si ya tiene  SSH
+
+        child.sendline("sh run | s ssh")
+        child.expect(last_host["host"])
+        ssh_info = child.before.decode()
+
+        if ssh_info != None:
+            # Buscar si ya se tiene activado el protocolo
+            if "transport input telnet ssh" in ssh_info:
+                log.warning("El router ya tiene preconfigurado el protocolo SSH. Saliendo...")
+                return make_response({ "message": "El router ya cuenta con conexión SSH activa" }, 200)
+
+        # Aplicar la configuración por defecto de SSH
+        usr, pwd, secret, vty = get_gns3_ssh_config()
+        commands = ["config t", f"enable secret {secret}", "service password encryption", 
+        "int lo0", "ip add 10.0.0.1 255.255.255.0", "no shut", 
+        "crypto key generate rsa usage-keys label sshkey modulus 1024", "ip ssh rsa keypair-name sshkey", 
+        "ip ssh v 2", "ip ssh time-out 30", "ip ssh authentication-retries 3", "line vty 0 15", f"password {vty}",
+        "login local", "transport input ssh telnet", "exit", f"username {usr} privilege 15 {pwd}"]
+
+        log.info(f"Configurando SSH en el router {last_host['host']} - {last_host['ip']}")
+
+        for command in commands:
+            log.warning(f"Ejecutando {command} == {last_host['host']}")
+            child.sendline(command)
+            child.expect(last_host["host"])
+        
+        log.info(f"Se ha terminado de configurar el acceso SSH en el router {last_host['host']}")
+        return make_response({ "message": "Se ha configurado la conexión SSH en el router" }, 200)
+    except pexpect.TIMEOUT:
+        log.warning("Tiempo de espera de conexión excedido")
+        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+    except Exception as ex:
+        log.error(str(ex))
+        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)

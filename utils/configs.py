@@ -32,6 +32,17 @@ def get_gns3_config():
     else:
         print(def_msg_err + " [GNS3]")
 
+def get_gns3_ssh_config():
+    if not parser.read(route):
+        print(def_msg_err)
+    if parser.has_option("GNS3", "usr") and parser.has_option("GNS3", "pwd") and parser.has_option("GNS3", "secret") and parser.has_option("GNS3", "vty"):
+        usr = decrypt_data(parser.get("GNS3", "usr"))
+        pwd = decrypt_data(parser.get("GNS3", "pwd"))
+        secret = decrypt_data(parser.get("GNS3", "secret"))
+        vty = decrypt_data(parser.get("GNS3", "vty"))
+        return usr, pwd, secret, vty
+    else:
+        print(def_msg_err + " [GNS3 SSH]")
 
 if __name__ == "__main__":
     # Reservado para pruebas
