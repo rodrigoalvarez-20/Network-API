@@ -44,6 +44,8 @@ def get_gns3_ssh_config():
     else:
         print(def_msg_err + " [GNS3 SSH]")
 
+
+
 if __name__ == "__main__":
     # Reservado para pruebas
     pass

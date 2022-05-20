@@ -1,18 +1,23 @@
+
+import os
 from flask import Response, make_response, request
-from utils.common import generate_login_token
+from utils.common import  generate_login_token, generate_restore_pwd_token, send_email_message
+from utils.tokens_handler import save_used_token
 from utils.decorators import netapi_decorator
-import bcrypt
+from pymongo import ReturnDocument
+
 
 from utils.session_auth import validate_session
 
 @netapi_decorator("users", "users")
-def register_user(log = None, db = None):
+def register_user(log=None, db=None):
     req_body = request.get_json()
     usr_data = {
         "name": req_body["name"],
         "last_name": req_body["last_name"],
         "email": req_body["email"],
-        "password": bcrypt.hashpw(req_body["password"].encode(), bcrypt.gensalt(12)).decode(),
+        # "password": bcrypt.hashpw(req_body["password"].encode(), bcrypt.gensalt(12)).decode(),
+        "password": req_body["password"],
         "type": req_body["type"]
     }
     log.info(f"Tratando de registrar un usuario: {usr_data}")
@@ -26,14 +31,14 @@ def register_user(log = None, db = None):
         # Insertar usuario
         usr = db.insert_one(usr_data)
         log.info(f"Usuario registrado: {usr.inserted_id}")
-        return make_response({ "message": "Se ha creado el usuario" }, 201)
-    
+        return make_response({"message": "Se ha creado el usuario"}, 201)
+
 @netapi_decorator("users", "users")
-def login_user(log = None, db = None):
+def login_user(log=None, db=None):
     req_body = request.get_json()
     email = req_body["email"]
     password = req_body["password"]
-        
+
     log.info(f"Intento de inicio de sesion: {email}")
 
     # Verificar que no exista en la base de datos
@@ -41,26 +46,71 @@ def login_user(log = None, db = None):
     usr_in_db = db.find_one({"email": email})
     if usr_in_db is not None:
         log.debug(f"Verificando credenciales")
-        if bcrypt.checkpw(password.encode(), usr_in_db["password"].encode()):
+        if password == usr_in_db["password"]:
             # Generar token
             log.info(f"Inicio de sesion correcto: {email}")
             token = generate_login_token(str(usr_in_db["_id"]), email)
-            return make_response({"message": "Inicio de sesion correcto", "token": token}, 200)
-            
+            return make_response({"message": "Inicio de sesion correcto", "token": token, "name": usr_in_db["name"], "last_name": usr_in_db["last_name"]}, 200)
+
         else:
             log.info(f"Credenciales incorrectas: {email}")
             return make_response({"error": "Credenciales incorrectas"}, 400)
     else:
         log.info(f"Credenciales incorrectas: {email}")
-        return make_response({ "error": "Credenciales incorrectas" }, 400)
+        return make_response({"error": "Credenciales incorrectas"}, 400)
 
 @netapi_decorator("users", "users")
-def update_profile(log = None, db = None):
+def get_users(email : str = None, log = None, db = None ):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+
+    if email:
+        users = list(db.find({"email": {"$regex": email}}, {"_id": 0}))
+    else:
+        users = list(db.find({}, {"_id": 0}))
+
+    return make_response({"users": users}, 200)
+
+@netapi_decorator("users", "users")
+def send_reset_email(log=None, db=None):
+    req_body = request.get_json()
+    email = req_body["email"]
+
+    log.info(
+        f"Solicitando el reestablecimiento de contraseña del usuario: {email}")
+
+    usr_in_db = db.find_one({"email": email})
+    log.debug(f"Infomacion del usuario solicitando reestablecimiento de contraseña: {usr_in_db}")
+    if usr_in_db is not None:
+        log.debug("Generando Token de restauración")
+        rest_tk = generate_restore_pwd_token(email)
+        reset_link = f"http://localhost:3000/services/restore?tk={rest_tk}"
+        body_msg = ""
+        log.debug("Abriendo template")
+        with open(f"{os.getcwd()}/templates/reset_password.html", "r") as template:
+            body_msg = template.read()
+        
+        body_msg = body_msg.replace("{email}", email)
+        body_msg = body_msg.replace("{url}", reset_link)
+        logo_image = None
+        with open(f"{os.getcwd()}/templates/logo.png", "rb") as logo:
+            logo_image = logo.read()
+
+        send_email_message("servicio-network@noreply.mx", email, "Reestablecimiento de contraseña", body_msg, logo_image)
+        log.info("Se ha enviado correctamente el email")
+        return make_response({"message":"Se ha enviado el correo de reestablecimiento"}, 200)
+    else:
+        log.info(f"Usuario {email} no encontrado")
+        return make_response({"error": "No se ha encontrado un usuario con el correo especificado"}, 400)
+
+@netapi_decorator("users", "users")
+def update_profile(log=None, db=None):
     # Validar request
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
-    
+
     usr_id = session_data["id"]
 
     req_body = request.get_json()
@@ -75,7 +125,25 @@ def update_profile(log = None, db = None):
     return make_response({"message": "Se ha actualizado el perfil"}, 200)
 
 @netapi_decorator("users", "users")
-def delete_user(log = None, db = None):
+def change_password(log = None, db = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+
+    email = session_data["email"]
+
+    req_body = request.get_json()
+    hsh_pwd = req_body["password"]
+    usr_modify = db.find_one_and_update({"email": email}, {"$set": {"password": hsh_pwd} }, return_document=ReturnDocument.AFTER)
+    save_used_token(request.headers["Authorization"])
+    if not usr_modify:
+        return make_response({"error": "El usuario no se ha encontrado en la base de datos"}, 400)
+
+    log.info(f"Se ha actualizado el password del usuario: {email}")
+    return make_response({"message": "Se ha actualizado la contraseña"}, 200)
+
+@netapi_decorator("users", "users")
+def delete_user(log=None, db=None):
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
