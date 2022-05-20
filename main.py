@@ -57,5 +57,5 @@ def error_handler():
     return make_response({"error":"Recurso no encontrado"}, 400)
 
 if __name__ == "__main__":
-    app.run("0.0.0.0", 5000, True)
+    app.run("127.0.0.1", 5000, True)
 
