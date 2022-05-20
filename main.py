@@ -1,10 +1,9 @@
-from crypt import methods
 from flask import Flask, make_response, request
 from routes.routers import activate_ssh_in_router, add_user_to_router, delete_user_from_router, list_devices_in_db, modify_router_protocol, modify_router_settings, update_user_from_router
 from routes.users import change_password, delete_user, get_users, login_user, register_user, send_reset_email, update_profile
 from utils.common import auth
 from utils.tokens_handler import search_used_token
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 
 from utils.decorators import netapi_decorator
 
