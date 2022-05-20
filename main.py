@@ -54,7 +54,6 @@ def validate_token_reset(log = None):
 def error_handler():
     return make_response({"error":"Recurso no encontrado"}, 400)
 
-""" if __name__ == "__main__":
+if __name__ == "__main__":
     app.run("0.0.0.0", 8000, True)
 
- """
