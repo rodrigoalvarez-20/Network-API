@@ -30,8 +30,8 @@ app.add_url_rule("/api/routers/config/ssh", "activate_ssh_in_router", activate_s
 
 
 @app.get("/api")
-@cross_origin()
 @netapi_decorator("general", None)
+@cross_origin()
 def test_api(log = None):
     log.info("Ruta principal")
     return make_response({"message": "Ok"}, 200)
