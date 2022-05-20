@@ -4,10 +4,13 @@ from routes.routers import activate_ssh_in_router, add_user_to_router, delete_us
 from routes.users import change_password, delete_user, get_users, login_user, register_user, send_reset_email, update_profile
 from utils.common import auth
 from utils.tokens_handler import search_used_token
+from flask_cors import CORS, cross_origin
 
 from utils.decorators import netapi_decorator
 
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.add_url_rule("/api/app/users/register", "register_user", register_user, methods=["POST"])
 app.add_url_rule("/api/app/users/login", "login_user", login_user, methods=["POST"])
