@@ -9,7 +9,11 @@ from utils.decorators import netapi_decorator
 
 app = Flask(__name__)
 CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+cors = CORS(app, resource={
+    r"/*": {
+        "origins": "*"
+    }
+})
 
 app.add_url_rule("/api/app/users/register", "register_user", register_user, methods=["POST"])
 app.add_url_rule("/api/app/users/login", "login_user", login_user, methods=["POST"])
@@ -34,7 +38,7 @@ app.add_url_rule("/api/routers/config/ssh", "activate_ssh_in_router", activate_s
 @netapi_decorator("general", None)
 def test_api(log = None):
     log.info("Ruta principal")
-    return make_response({"message": "Ok"}, 200).headers.add("Access-Control-Allow-Origin", "*")
+    return make_response({"message": "Ok"}, 200)
 
 @app.post("/api/auth/validate")
 @netapi_decorator("users")
