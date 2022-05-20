@@ -2,3 +2,4 @@ venv/
 monitor.py
 __pycache__/
 topo_map.json
+.vscode/
