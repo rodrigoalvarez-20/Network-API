@@ -85,7 +85,7 @@ def send_reset_email(log=None, db=None):
     if usr_in_db is not None:
         log.debug("Generando Token de restauración")
         rest_tk = generate_restore_pwd_token(email)
-        reset_link = f"http://localhost:3000/services/restore?tk={rest_tk}"
+        reset_link = f"http://20.225.148.220/services/restore?tk={rest_tk}"
         body_msg = ""
         log.debug("Abriendo template")
         with open(f"{os.getcwd()}/templates/reset_password.html", "r") as template:
