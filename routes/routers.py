@@ -1,8 +1,11 @@
 from datetime import datetime
+import json
+
 from utils.configs import get_gns3_config, get_gns3_ssh_config
 from utils.session_auth import validate_session
 from utils.decorators import netapi_decorator
-from flask import Response, make_response, request
+from utils.response import netapi_response
+from flask import Response, request
 import pexpect
 from pexpect import pxssh
 
@@ -68,7 +71,7 @@ def list_devices_in_db(log = None, db = None):
 
     log.info("Obteniendo todos los dispositivos en la DB")
     devices_in_db = list(db.find({}, {"_id": 0}))
-    return make_response({"devices": devices_in_db}, 200)
+    return netapi_response({"devices": devices_in_db}, 200)
 
 @netapi_decorator("network")
 def add_user_to_router(log = None):
@@ -114,14 +117,14 @@ def add_user_to_router(log = None):
         child.close(force=True) # Mandamos un close con force para que cierre el proceso padre, por ende tambien los hijos
         
         log.info(f"Se ha terminado de añadir el usuario via {con_method}")
-        return make_response({"message": "Se ha agregado el usuario al router"}, 200)
+        return netapi_response({"message": "Se ha agregado el usuario al router"}, 200)
 
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
 
 @netapi_decorator("network")
 def update_user_from_router(log=None):
@@ -165,13 +168,13 @@ def update_user_from_router(log=None):
         child.expect(last_host['host'])
         child.close(force=True)
         log.info(f"Se ha terminado de modificar el usuario via {con_method}")
-        return make_response({"message": "Se ha modificado el usuario en el router"}, 200)
+        return netapi_response({"message": "Se ha modificado el usuario en el router"}, 200)
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
 
 @netapi_decorator("network")
 def delete_user_from_router(log=None):
@@ -214,13 +217,13 @@ def delete_user_from_router(log=None):
         child.expect(last_host['host'])
         child.close(force=True)
         log.info(f"Se ha eliminado el usuario del router via {con_method}")
-        return make_response({"message": "Se ha eliminado el usuario en el router"}, 200)
+        return netapi_response({"message": "Se ha eliminado el usuario en el router"}, 200)
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
     
 @netapi_decorator("network")
 def modify_router_protocol(log = None):
@@ -283,13 +286,13 @@ def modify_router_protocol(log = None):
         child.expect(last_host["host"])
         child.close()
         log.info(f"Se ha terminado de configurar el protocolo {protocol} con las redes {', '.join(networks)} via {con_method}")
-        return make_response({"message": "Se ha modificado el protocolo existente" if has_to_modify else "Se ha anadido el protocolo"}, 200)
+        return netapi_response({"message": "Se ha modificado el protocolo existente" if has_to_modify else "Se ha anadido el protocolo"}, 200)
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
     
 @netapi_decorator("network")
 def modify_router_settings(log = None):
@@ -365,14 +368,13 @@ def modify_router_settings(log = None):
         child.expect(expect_host)
         child.close()
         log.info(f"Se ha terminado de configurar el router {expect_host}")
-        return make_response({ "message": "Se ha aplicado la configuracion" })
+        return netapi_response({ "message": "Se ha aplicado la configuracion" })
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
-
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
 
 @netapi_decorator("network")
 def activate_ssh_in_router(log = None):
@@ -407,7 +409,7 @@ def activate_ssh_in_router(log = None):
             # Buscar si ya se tiene activado el protocolo
             if "transport input telnet ssh" in ssh_info:
                 log.warning("El router ya tiene preconfigurado el protocolo SSH. Saliendo...")
-                return make_response({ "message": "El router ya cuenta con conexión SSH activa" }, 200)
+                return netapi_response({ "message": "El router ya cuenta con conexión SSH activa" }, 200)
 
         # Aplicar la configuración por defecto de SSH
         usr, pwd, secret, vty = get_gns3_ssh_config()
@@ -425,10 +427,27 @@ def activate_ssh_in_router(log = None):
             child.expect(last_host["host"])
         
         log.info(f"Se ha terminado de configurar el acceso SSH en el router {last_host['host']}")
-        return make_response({ "message": "Se ha configurado la conexión SSH en el router" }, 200)
+        return netapi_response({ "message": "Se ha configurado la conexión SSH en el router" }, 200)
     except pexpect.TIMEOUT:
         log.warning("Tiempo de espera de conexión excedido")
-        return make_response({"error": "Tiempo de espera en el router excedido"}, 500)
+        return netapi_response({"error": "Tiempo de espera en el router excedido"}, 500)
     except Exception as ex:
         log.error(str(ex))
-        return make_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+        return netapi_response({"error": "Ha ocurrido un error al ejecutar el comando"}, 500)
+
+@netapi_decorator("network","network_map")
+def display_network(log = None, db = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+    
+    #network_schema = list(db.find({}))[0]
+    with open("topo_map.json", "r") as t:
+        network_schema = json.loads(t.read())
+
+    resp = netapi_response({"schema": network_schema}, 200)
+    
+
+    return resp
+
+

@@ -20,7 +20,7 @@ routes = {
 }
 
 
-def netapi_decorator(log_alias = None, tb_alias = None):
+def netapi_decorator(log_alias = "general", tb_alias = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

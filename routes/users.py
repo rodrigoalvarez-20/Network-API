@@ -1,13 +1,14 @@
 
 import os
-from flask import Response, make_response, request
+from flask import Response, request
 from utils.common import  generate_login_token, generate_restore_pwd_token, send_email_message
 from utils.tokens_handler import save_used_token
 from utils.decorators import netapi_decorator
 from pymongo import ReturnDocument
-
+from bson.objectid import ObjectId
 
 from utils.session_auth import validate_session
+from utils.response import netapi_response
 
 @netapi_decorator("users", "users")
 def register_user(log=None, db=None):
@@ -26,12 +27,12 @@ def register_user(log=None, db=None):
     usr_in_db = db.find_one({"email": usr_data["email"]})
     if usr_in_db is not None:
         log.info(f"Usuario ya existente {usr_data['email']}")
-        return make_response({"error": "El usuario ya se ha registrado"}, 400)
+        return netapi_response({"error": "El usuario ya se ha registrado"}, 400)
     else:
         # Insertar usuario
         usr = db.insert_one(usr_data)
         log.info(f"Usuario registrado: {usr.inserted_id}")
-        return make_response({"message": "Se ha creado el usuario"}, 201)
+        return netapi_response({"message": "Se ha creado el usuario"}, 201)
 
 @netapi_decorator("users", "users")
 def login_user(log=None, db=None):
@@ -50,14 +51,14 @@ def login_user(log=None, db=None):
             # Generar token
             log.info(f"Inicio de sesion correcto: {email}")
             token = generate_login_token(str(usr_in_db["_id"]), email)
-            return make_response({"message": "Inicio de sesion correcto", "token": token, "name": usr_in_db["name"], "last_name": usr_in_db["last_name"]}, 200)
+            return netapi_response({"message": "Inicio de sesion correcto", "token": token, "name": usr_in_db["name"], "last_name": usr_in_db["last_name"]}, 200)
 
         else:
             log.info(f"Credenciales incorrectas: {email}")
-            return make_response({"error": "Credenciales incorrectas"}, 400)
+            return netapi_response({"error": "Credenciales incorrectas"}, 400)
     else:
         log.info(f"Credenciales incorrectas: {email}")
-        return make_response({"error": "Credenciales incorrectas"}, 400)
+        return netapi_response({"error": "Credenciales incorrectas"}, 400)
 
 @netapi_decorator("users", "users")
 def get_users(email : str = None, log = None, db = None ):
@@ -70,7 +71,7 @@ def get_users(email : str = None, log = None, db = None ):
     else:
         users = list(db.find({}, {"_id": 0}))
 
-    return make_response({"users": users}, 200)
+    return netapi_response({"users": users}, 200)
 
 @netapi_decorator("users", "users")
 def send_reset_email(log=None, db=None):
@@ -99,10 +100,10 @@ def send_reset_email(log=None, db=None):
 
         send_email_message("servicio-network@noreply.mx", email, "Reestablecimiento de contraseña", body_msg, logo_image)
         log.info("Se ha enviado correctamente el email")
-        return make_response({"message":"Se ha enviado el correo de reestablecimiento"}, 200)
+        return netapi_response({"message":"Se ha enviado el correo de reestablecimiento"}, 200)
     else:
         log.info(f"Usuario {email} no encontrado")
-        return make_response({"error": "No se ha encontrado un usuario con el correo especificado"}, 400)
+        return netapi_response({"error": "No se ha encontrado un usuario con el correo especificado"}, 400)
 
 @netapi_decorator("users", "users")
 def update_profile(log=None, db=None):
@@ -111,7 +112,7 @@ def update_profile(log=None, db=None):
     if type(session_data) is Response:
         return session_data
 
-    usr_id = session_data["id"]
+    usr_id = ObjectId(session_data["id"])
 
     req_body = request.get_json()
     usr_data = {
@@ -120,9 +121,14 @@ def update_profile(log=None, db=None):
         "type": req_body["type"]
     }
 
-    db.find_one_and_update({"_id": usr_id}, {"$set": usr_data})
-    log.info(f"Se ha actualizado la informacion del usuario: {usr_id}")
-    return make_response({"message": "Se ha actualizado el perfil"}, 200)
+
+    updated = db.find_one_and_update({"_id": usr_id}, {"$set": usr_data}, return_document=ReturnDocument.AFTER)
+    if updated is not None:
+        log.info(f"Se ha actualizado la informacion del usuario: {usr_id}")
+        return netapi_response({"message": "Se ha actualizado el perfil"}, 200)
+    else:
+        log.error(f"Ha ocurrido un error al actualizar la información del usuario: {usr_id}")
+        return netapi_response({"error": "Ha ocurrido un error actualizado el perfil"}, 500)
 
 @netapi_decorator("users", "users")
 def change_password(log = None, db = None):
@@ -137,10 +143,10 @@ def change_password(log = None, db = None):
     usr_modify = db.find_one_and_update({"email": email}, {"$set": {"password": hsh_pwd} }, return_document=ReturnDocument.AFTER)
     save_used_token(request.headers["Authorization"])
     if not usr_modify:
-        return make_response({"error": "El usuario no se ha encontrado en la base de datos"}, 400)
+        return netapi_response({"error": "El usuario no se ha encontrado en la base de datos"}, 400)
 
     log.info(f"Se ha actualizado el password del usuario: {email}")
-    return make_response({"message": "Se ha actualizado la contraseña"}, 200)
+    return netapi_response({"message": "Se ha actualizado la contraseña"}, 200)
 
 @netapi_decorator("users", "users")
 def delete_user(log=None, db=None):
@@ -152,6 +158,6 @@ def delete_user(log=None, db=None):
     email = req_body["email"]
     usr_del = db.find_one_and_delete({"email": email})
     if not usr_del:
-        return make_response({"error": "No se ha encontrado el usuario"}, 404)
+        return netapi_response({"error": "No se ha encontrado el usuario"}, 404)
     log.warning(f"Se ha eliminado el usuario: {email}")
-    return make_response({"message": "Se ha eliminado el usuario"}, 200)
+    return netapi_response({"message": "Se ha eliminado el usuario"}, 200)

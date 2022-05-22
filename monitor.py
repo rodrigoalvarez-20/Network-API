@@ -8,7 +8,7 @@
 from pprint import pprint
 import subprocess
 from time import time
-from itsdangerous import json
+import json
 import pexpect
 from utils.configs import get_gns3_config
 from utils.decorators import netapi_decorator
@@ -112,7 +112,6 @@ def start_mapping(log = None, db = None):
     start = time()
     #nets = get_ip_from_local_address(excluded_nets)
     routers_net = []
-    #print(nets)
     #for net in nets:
     #    routers_net += get_os_in_network(net)
 
@@ -134,10 +133,9 @@ def start_mapping(log = None, db = None):
         routers_map[hostname] = { "name": hostname, "ip": router, "type": "root", "interfaces": router_interfaces}
         hosts_maped.append(hostname)
         for i,data in enumerate(cdp_data):
-            #Moverse a los siguientes routers ?
+            #Moverse a los siguientes routers
             actual_route.append(data["address"])
             child_tn = login_into_router(actual_route)
-            #routers_inserted += 1
             ch_hostname = get_router_hostname(child_tn)
             child_interfaces = get_interfaces_info(child_tn)
             
@@ -152,7 +150,6 @@ def start_mapping(log = None, db = None):
 
                 routers_map[ch_hostname] = { "name": ch_hostname, "ip": data["address"], "type": "child", "parent": { "host": root_host, "ip": last_router_ip }, "route": ",".join(actual_route), "interfaces": child_interfaces}
             hosts_maped.append(ch_hostname)
-            #print(len(ch_cdp))
 
             for j,c in enumerate(ch_cdp):
                 cdp_data.insert(i+j+1, c)
@@ -167,7 +164,6 @@ def start_mapping(log = None, db = None):
 
     end = time()
 
-    
     with open("topo_map.json", "w") as f:
         f.write(json.dumps(routers_map))    
 

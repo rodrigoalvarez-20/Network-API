@@ -1,5 +1,6 @@
-from flask import make_response, request
+from flask import request
 from utils.common import auth
+from utils.response import netapi_response
 from utils.decorators import netapi_decorator
 
 
@@ -7,10 +8,10 @@ from utils.decorators import netapi_decorator
 def validate_session(log=None):
     log.info("Validando sesion de usuario")
     if "Authorization" not in request.headers:
-        return make_response({"error": "Encabezado no encontrado"}, 400)
+        return netapi_response({"error": "Encabezado no encontrado"}, 400)
 
     auth_stat = auth(request.headers["Authorization"])
     if auth_stat["status"] != 200:
-        return make_response({"error": auth_stat["error"]}, 401)
+        return netapi_response({"error": auth_stat["error"]}, 401)
 
     return auth_stat
