@@ -17,7 +17,6 @@ def register_user(log=None, db=None):
         "name": req_body["name"],
         "last_name": req_body["last_name"],
         "email": req_body["email"],
-        # "password": bcrypt.hashpw(req_body["password"].encode(), bcrypt.gensalt(12)).decode(),
         "password": req_body["password"],
         "type": req_body["type"]
     }
