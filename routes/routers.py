@@ -62,17 +62,6 @@ def delete_protocols_from_router(child, host, protocols_list, log = None):
         child.sendline(f"no router {pt_rt}")
         child.expect(host)
 
-# Esta probablemente la tenga que borrar
-@netapi_decorator("network", "devices")
-def list_devices_in_db(log = None, db = None):
-    session_data = validate_session()
-    if type(session_data) is Response:
-        return session_data
-
-    log.info("Obteniendo todos los dispositivos en la DB")
-    devices_in_db = list(db.find({}, {"_id": 0}))
-    return netapi_response({"devices": devices_in_db}, 200)
-
 @netapi_decorator("network")
 def add_user_to_router(log = None):
     session_data = validate_session()
@@ -441,9 +430,9 @@ def display_network(log = None, db = None):
     if type(session_data) is Response:
         return session_data
     
-    #network_schema = list(db.find({}))[0]
-    with open("topo_map.json", "r") as t:
-        network_schema = json.loads(t.read())
+    network_schema = list(db.find({}, {"_id": 0}))[0]
+    #with open("topo_map.json", "r") as t:
+    #    network_schema = json.loads(t.read())
 
     resp = netapi_response({"schema": network_schema}, 200)
     

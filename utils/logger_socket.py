@@ -8,7 +8,7 @@ from pprint import pprint
 def get_logger_output(logname = None, log = None):
     today = datetime.now().day
     file_name = f"{routes[logname]}*{today}.log" if logname else f"{LOGS_PATH}/*/*{today}.log"
-    log.info(f"Obteniendo logs: {file_name}")
+    log.debug(f"Obteniendo logs: {file_name}")
     f = subprocess.getoutput(f"cat {file_name}").splitlines()
 
     if f[0].find("No such file or directory") != -1:
@@ -18,6 +18,7 @@ def get_logger_output(logname = None, log = None):
     f_fmt = list(filter(lambda x: \
         x.find("* Detected change") == -1 and \
         x.find("/socket.io/") == -1 and \
+        x.find("DEBUG") == -1 and \
         x.find("_log_error_once") == -1, f))
     return f_fmt
 
@@ -39,7 +40,7 @@ def save_logger_prefs(actual_log = None, interval = None, log = None, db = None)
 
 @netapi_decorator("general", "configs")
 def get_logger_prefs(log = None, db = None):
-    log.info("Obteniendo configuraciones de logs")
+    log.debug("Obteniendo configuraciones de logs")
     if db.count_documents({}) == 0:
         return "general", 10
     else:
