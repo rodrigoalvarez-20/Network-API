@@ -2,7 +2,8 @@ from crypt import methods
 from flask import Flask, request
 from database.mongo import get_mongo_client
 from routes.configurations import get_all_app_config, update_configs
-from routes.routers import activate_ssh_in_router, add_user_to_router, delete_user_from_router, list_devices_in_db, modify_router_protocol, modify_router_settings, update_user_from_router, display_network
+from routes.routers import display_network
+#from routes.routers import activate_ssh_in_router, add_user_to_router, delete_user_from_router, modify_router_protocol, modify_router_settings, update_user_from_router, display_network
 from routes.users import change_password, delete_user, get_users, login_user, register_user, send_reset_email, update_profile
 from utils.common import auth
 from utils.configs import get_mongo_config
@@ -36,16 +37,15 @@ app.add_url_rule("/api/app/configurations", "get_all_app_config", get_all_app_co
 app.add_url_rule("/api/app/configurations", "update_configs", update_configs, methods=["POST"])
 
 
-app.add_url_rule("/api/routers/users/add", "add_user_to_router", add_user_to_router, methods=["POST"])
-app.add_url_rule("/api/routers/users/modify", "update_user_from_router", update_user_from_router, methods=["POST"])
-app.add_url_rule("/api/routers/users/delete", "delete_user_from_router", delete_user_from_router, methods=["DELETE"])
-app.add_url_rule("/api/routers", "list_devices_in_db", list_devices_in_db, methods=["GET"])
+#app.add_url_rule("/api/routers/users/add", "add_user_to_router", add_user_to_router, methods=["POST"])
+#app.add_url_rule("/api/routers/users/modify", "update_user_from_router", update_user_from_router, methods=["POST"])
+#app.add_url_rule("/api/routers/users/delete", "delete_user_from_router", delete_user_from_router, methods=["DELETE"])
 app.add_url_rule("/api/routers/graph", "display_network", display_network, methods=["GET"])
 
 
-app.add_url_rule("/api/routers/protocol", "modify_router_protocol", modify_router_protocol, methods=["POST"])
-app.add_url_rule("/api/routers/config/modify", "modify_router_settings", modify_router_settings, methods=["POST"])
-app.add_url_rule("/api/routers/config/ssh", "activate_ssh_in_router", activate_ssh_in_router, methods=["POST"])
+#app.add_url_rule("/api/routers/protocol", "modify_router_protocol", modify_router_protocol, methods=["POST"])
+#app.add_url_rule("/api/routers/config/modify", "modify_router_settings", modify_router_settings, methods=["POST"])
+#app.add_url_rule("/api/routers/config/ssh", "activate_ssh_in_router", activate_ssh_in_router, methods=["POST"])
 
 
 @app.get("/api")

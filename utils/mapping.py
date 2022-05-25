@@ -1,6 +1,8 @@
 import json
+from typing import Union
 from utils.decorators import netapi_decorator
 import pexpect
+from pexpect import pxssh
 import subprocess
 from utils.configs import get_gns3_config
 
@@ -54,13 +56,13 @@ def login_into_router(route : list, log = None):
         tn.expect("#")
     return tn    
 
-def send_command(tn : pexpect.spawn, command : str):
+def send_command(tn: Union[pexpect.spawn, pxssh.pxssh], command: str):
     tn.sendline(command)
     tn.expect("#")
     return tn.before.decode("utf8")
 
 @netapi_decorator("mapping")
-def get_ssh_status(tn: pexpect.spawn, log = None):
+def get_ssh_status(tn: Union[pexpect.spawn, pxssh.pxssh], log = None):
     log.info("Obteniendo estado del servicio SSH en el dispositivo")
     out = send_command(tn, "sh ip ssh").split("\n")
     out.pop(0)
@@ -89,7 +91,6 @@ def check_snmp_in_router(tn: pexpect.spawn, log = None):
     snmp_stat.pop(0)
     snmp_stat = snmp_stat[0].replace("\r", "").replace("%", "")
     return snmp_stat != "SNMP agent not enabled"
-
 
 @netapi_decorator("mapping")
 def get_router_hostname(tn : pexpect.spawn, log = None):

@@ -1,4 +1,5 @@
 
+import json
 from flask import Response, request
 from utils.decorators import netapi_decorator
 from pymongo import ReturnDocument
@@ -6,12 +7,17 @@ from bson.objectid import ObjectId
 from utils.session_auth import validate_session
 from utils.response import netapi_response
 
+config_params = ["actual_log", "logs_timer", "map_interval", \
+    "interface_interval", "device_interval", \
+    "received_packets_percentage", "lost_packets_percentage", \
+    "damaged_packets_percentage", "device_mon", "int_mon" ]
+
 @netapi_decorator("general", "configs")
 def get_all_app_config(log = None, db = None):
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
-
+    log.info("Obteniendo las configuraciones guardads")
     configs = list(db.find({}, {"_id": 0}))
 
     if len(configs) > 0:
@@ -24,22 +30,20 @@ def update_configs(log = None, db = None):
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
-
+    log.info("Agregando/Actualizando configuraciones de la aplicacion")
     req_body = request.get_json()
-    actual_log = req_body["actual_log"]
-    logs_timer = req_body["logs_timer"]
-    map_interval = req_body["map_interval"]
-    interface_interval = req_body["interface_interval"]
-    lost_packets_percentage = req_body["lost_packets_percentage"]
-
-    db.delete_many({})
-
-    db.insert_one({ 
-        "actual_log": actual_log,
-        "logs_timer": int(logs_timer),
-        "map_interval": int(map_interval),
-        "interface_interval": int(interface_interval),
-        "lost_packets_percentage": int(lost_packets_percentage)
-    })
-
-    return netapi_response({ "message": "Se han actualizado las configuraciones" }, 200)
+    params = {}
+    
+    for p in config_params:
+        if p in req_body:
+            params[p] = req_body[p] if p in ["actual_log", "device_mon", "int_mon"] else int(req_body[p])
+    
+    
+    configs_in_db = list(db.find())
+    log.info(f"Valores a actualizar: {json.dumps(params)}")
+    if len(configs_in_db) == 0:
+        db.insert_one(params)
+        return netapi_response({"message": "Se ha creado la entrada de configuraciones"}, 200)
+    else:
+        db.update_one({ "_id": configs_in_db[0]["_id"] }, { "$set": params })
+        return netapi_response({ "message": "Se han actualizado las configuraciones" }, 200)
