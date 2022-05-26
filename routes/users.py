@@ -1,14 +1,15 @@
 
 import os
+from api.utils.configs import get_general_config
 from flask import Response, request
-from utils.common import  generate_login_token, generate_restore_pwd_token, send_email_message
-from utils.tokens_handler import save_used_token
-from utils.decorators import netapi_decorator
+from api.utils.common import  generate_login_token, generate_restore_pwd_token, send_email_message
+from api.utils.tokens_handler import save_used_token
+from api.utils.decorators import netapi_decorator
 from pymongo import ReturnDocument
 from bson.objectid import ObjectId
 
-from utils.session_auth import validate_session
-from utils.response import netapi_response
+from api.utils.session_auth import validate_session
+from api.utils.response import netapi_response
 
 @netapi_decorator("users", "users")
 def register_user(log=None, db=None):
@@ -81,11 +82,12 @@ def send_reset_email(log=None, db=None):
         f"Solicitando el reestablecimiento de contraseña del usuario: {email}")
 
     usr_in_db = db.find_one({"email": email})
+    _, _, ch, cp, _ = get_general_config()
     log.debug(f"Infomacion del usuario solicitando reestablecimiento de contraseña: {usr_in_db}")
     if usr_in_db is not None:
         log.debug("Generando Token de restauración")
         rest_tk = generate_restore_pwd_token(email)
-        reset_link = f"http://127.0.0.1:3000/services/restore?tk={rest_tk}"
+        reset_link = f"http://{ch}:{cp}/services/restore?tk={rest_tk}"
         body_msg = ""
         log.debug("Abriendo template")
         with open(f"{os.getcwd()}/templates/reset_password.html", "r") as template:

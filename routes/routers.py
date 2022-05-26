@@ -1,15 +1,14 @@
 from datetime import datetime
 import json
 
-from utils.configs import get_gns3_config, get_gns3_ssh_config
-from utils.mapping import send_command
-from utils.routing import connect_to_router
-from utils.session_auth import validate_session
-from utils.decorators import netapi_decorator
-from utils.response import netapi_response
+from api.utils.configs import get_gns3_config, get_gns3_ssh_config, get_snmp_config
+from api.utils.mapping import get_ip_from_local_address, send_command
+from api.utils.routing import connect_to_router, execute_commands
+from api.utils.session_auth import validate_session
+from api.utils.decorators import netapi_decorator
+from api.utils.response import netapi_response
+from api.monitor import start_mapping
 from flask import Response, request
-import pexpect
-from pexpect import pxssh
 
 @netapi_decorator("network","network_map")
 def display_network(log = None, db = None):
@@ -18,10 +17,10 @@ def display_network(log = None, db = None):
         return session_data
     log.info("Obteniendo topologia de red desde la DB")
 
-    #network_schema = list(db.find({}, {"_id": 0}))[0]
+    network_schema = list(db.find({}, {"_id": 0}))[0]
     
-    with open("topo_map.json", "r") as t:
-        network_schema = json.loads(t.read())
+    #with open("topo_map.json", "r") as t:
+    #    network_schema = json.loads(t.read())
     
     return netapi_response({"schema": network_schema}, 200)
 
@@ -29,55 +28,104 @@ def display_network(log = None, db = None):
 # VERSION 2
 
 @netapi_decorator("network", "network_map")
-def modify_router_config(log = None):
+def modify_router_config(log = None, db = None):
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
     request_body = request.get_json()
 
-    # El body contiene la version actualizada del router seleccionado
-    # y las acciones a realizar en sus respectivos campos
-    # hostname, interfaces, protocolos
-    # La ruta viene en un arreglo de IP´s
-    # conn_method puede ser SSH o telnet
-    # La conexión se intentará hacer via SSH de manera automatica
-    update_router = request_body["router"]
+    usr, pwd, secret, vty = get_gns3_ssh_config()
+    
+    original_name = request_body["original_name"]
 
     ip_list = request_body["route"]
     method = request_body["method"]
+
+    access_ip = ip_list[len(ip_list)-1]
 
     router_conn = connect_to_router(ip_list, method)
 
     if type(router_conn) == object:
         return netapi_response(router_conn, 500)
+
     send_command(router_conn, "config t")
+
     if "hostname" in request_body:
         # Actualizar el hostname del dispositivo
-        log.info(f"Actualizado nombre del dispositivo: {update_router['name']}")
+        log.info(f"Actualizado nombre del dispositivo: {original_name}")
         new_name = request_body["hostname"]
         send_command(router_conn, f"hostname {new_name}")
     
     if "interfaces" in request_body:
-        log.info(f"Cambiando interfaces del router {update_router['name']}")
+        log.info(f"Cambiando interfaces del router {original_name}")
         interfaces = request_body["interfaces"]
         for interface in interfaces:
             log.info(f"Configurando interfaz {interface['name']}")
             send_command(router_conn, f"int {interface['name']}")
-            if "shutdown" in interface:
+            if "shutdown" in interface and interface["shutdown"] == True:
                 log.debug(f"Se ha apagado la interfaz {interface['name']}")
                 send_command(router_conn, "shut")
-            elif "remove" in interface:
+            elif "remove" in interface and interface["remove"] == True:
                 log.debug(f"Se ha eliminado IP de la interfaz {interface['name']}")
                 send_command(router_conn, "no ip add *")
-            elif "power" in interface:
+            elif "power" in interface and interface["power"] == True:
                 log.debug(f"Se ha encendido la interfaz {interface['name']}")
                 send_command(router_conn, "no shut")
             else:
                 log.debug(f"Se ha configurado la IP: {interface['ip']} en la interfaz {interface['name']}")
                 send_command(router_conn, f'ip add {interface["ip"]} {interface["mask"]}')
                 send_command(router_conn, "no shut")
+        send_command(router_conn, "exit")
 
-    # Actualizar el elemento
+    if "ssh_v2" in request_body:
+        activate = bool(request_body["ssh_v2"])
+        if activate == True:
+            commands = [f"enable secret {secret}", "service password encryption", 
+                "int lo0", "ip add 10.0.0.1 255.255.255.0", "no shut",
+                "crypto key generate rsa usage-keys label sshkey modulus 1024", "ip ssh rsa keypair-name sshkey", 
+                "ip ssh v 2", "ip ssh time-out 30", "ip ssh authentication-retries 3", "line vty 0 15", f"password {vty}",
+                "login local", "transport input ssh telnet", "exit", f"username {usr} privilege 15 {pwd}"]
+
+            log.info(f"Configurando SSH en el router {original_name} - {access_ip}")
+        else:
+            commands = ["line vty 0 15", "transport input telnet", "exit"]
+            log.warning(f"Eliminando el protocolo SSH-v2 en el router {original_name}")
+        
+        execute_commands(router_conn, commands, original_name)
+
+    log.info(f"Se ha terminado de configurar los cambios al SSH en el router {original_name}")
+
+    if "snmp-v3" in request_body:
+        group = get_snmp_config()
+        activate = bool(request_body["snmp-v3"])
+        if activate == True:
+            usr, pwd, secret, vty = get_gns3_ssh_config()
+            inets = get_ip_from_local_address(["192.168.100.0"])
+            ips = [ "2".join(x.rsplit("0",1)) for x in inets ]
+            commands = [f"snmp-server group {group} v3 auth", f"snmp-server user {usr} {group} v3 auth md5 {pwd} priv des56 {pwd}",
+            "snmp-server enable traps"]
+            for ip in ips:
+                commands.append(f"snmp-server host {ip} {usr} alarms config cpu eigrp ospf snmp")
+                commands.append(f"snmp-server host {ip} informs version 2c {usr} alarms config cpu eigrp ospf snmp")
+            
+            log.info(f"Configurando SNMP-V3 en el router {original_name} - {access_ip}")
+        else:
+            commands = ["no snmp-server"]
+            log.warning(f"Eliminando el SNMP-V3 en el router {original_name}")
+        
+        execute_commands(router_conn, commands, original_name)
+
+        log.info(f"Se ha terminado de configurar los cambios en el SNMP del router {original_name}")
+        
+    
+    send_command(router_conn, "exit")
+    send_command(router_conn, "wr mem")
+
+    start_mapping()
+
+    return netapi_response({ "message": "Se ha actualizado la configuracion del router" }, 200)
+
+
 
     
 

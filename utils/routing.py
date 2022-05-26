@@ -1,8 +1,15 @@
+from typing import Union
 import pexpect
-from utils.configs import get_gns3_config
-from utils.decorators import netapi_decorator
+from api.utils.mapping import send_command
+from api.utils.configs import get_gns3_config
+from api.utils.decorators import netapi_decorator
 from pexpect import pxssh
 
+@netapi_decorator("network")
+def execute_commands(router : Union[pexpect.spawn, pxssh.pxssh ], commands: list, name: str, log = None):
+ for command in commands:
+    log.warning(f"Ejecutando {command} --> {name}")
+    send_command(router, command)
 
 @netapi_decorator("network")
 def move_into_routers(child, ip_list: list, method, usr, pwd, log=None):

@@ -1,5 +1,5 @@
 
-from utils.decorators import netapi_decorator
+from api.utils.decorators import netapi_decorator
 
 @netapi_decorator("general", "tokens")
 def save_used_token(token: str, log=None, db=None):

@@ -1,6 +1,6 @@
 from configparser import ConfigParser
 import os
-from utils.common import decrypt_data
+from api.utils.common import decrypt_data
 
 parser = ConfigParser()
 
@@ -44,6 +44,31 @@ def get_gns3_ssh_config():
     else:
         print(def_msg_err + " [GNS3 SSH]")
 
+
+def get_general_config():
+    if not parser.read(route):
+        print(def_msg_err)
+    if parser.has_option("GENERAL", "api_host") and parser.has_option("GENERAL", "api_port") \
+        and parser.has_option("GENERAL", "client_host") \
+            and parser.has_option("GENERAL", "client_port") \
+            and parser.has_option("GENERAL", "excluded_networks"):
+        ah = parser.get("GENERAL", "api_host")
+        ap = parser.get("GENERAL", "api_port")
+        ch = parser.get("GENERAL", "client_host")
+        cp = parser.get("GENERAL", "client_port")
+        ex_nets = parser.get("GENERAL", "excluded_networks").split(";")
+        return ah, ap, ch, cp, ex_nets
+    else:
+        print(def_msg_err + " [GENERAL]")
+
+def get_snmp_config():
+    if not parser.read(route):
+        print(def_msg_err)
+    if parser.has_option("SNMP", "group"):
+        group = parser.get("SNMP", "group")
+        return group
+    else:
+        print(def_msg_err + " [SNMP]")
 
 
 if __name__ == "__main__":

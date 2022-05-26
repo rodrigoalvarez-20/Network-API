@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 
-from utils.configs import get_mongo_config
+from api.utils.configs import get_mongo_config
 
 def get_mongo_client():
     usr, pwd, host, _ = get_mongo_config()

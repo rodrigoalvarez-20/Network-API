@@ -1,10 +1,10 @@
 import json
 from typing import Union
-from utils.decorators import netapi_decorator
 import pexpect
 from pexpect import pxssh
 import subprocess
-from utils.configs import get_gns3_config
+from api.utils.configs import get_gns3_config
+from api.utils.decorators import netapi_decorator
 
 @netapi_decorator("mapping", None)
 def get_ip_from_local_address(excluded, log = None):
@@ -64,10 +64,10 @@ def send_command(tn: Union[pexpect.spawn, pxssh.pxssh], command: str):
 @netapi_decorator("mapping")
 def get_ssh_status(tn: Union[pexpect.spawn, pxssh.pxssh], log = None):
     log.info("Obteniendo estado del servicio SSH en el dispositivo")
-    out = send_command(tn, "sh ip ssh").split("\n")
+    out = send_command(tn, "sh run | s transport input").split("\n")
     out.pop(0)
     ssh_stat = out[0]
-    return ssh_stat.split(" ")[1] == "Enabled"
+    return ssh_stat.find("ssh") != -1
 
 @netapi_decorator("mapping")
 def get_router_protocols(tn: pexpect.spawn, log = None):

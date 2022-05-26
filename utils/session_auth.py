@@ -1,7 +1,7 @@
 from flask import request
-from utils.common import auth
-from utils.response import netapi_response
-from utils.decorators import netapi_decorator
+from api.utils.common import auth
+from api.utils.response import netapi_response
+from api.utils.decorators import netapi_decorator
 
 
 @netapi_decorator("users")

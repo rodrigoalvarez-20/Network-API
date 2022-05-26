@@ -1,13 +1,15 @@
 from datetime import datetime
 import json
 import time, subprocess
-from utils.decorators import routes, LOGS_PATH, netapi_decorator
+from api.utils.decorators import routes, LOGS_PATH, netapi_decorator
 from pprint import pprint
 
 @netapi_decorator("general", None)
 def get_logger_output(logname = None, log = None):
     today = datetime.now().day
-    file_name = f"{routes[logname]}*{today}.log" if logname else f"{LOGS_PATH}/*/*{today}.log"
+    month = datetime.now().month
+
+    file_name = f"{routes[logname]}*{today}.log" if logname else f"{LOGS_PATH}/*/*_{month}_{today}.log"
     log.debug(f"Obteniendo logs: {file_name}")
     f = subprocess.getoutput(f"cat {file_name}").splitlines()
 

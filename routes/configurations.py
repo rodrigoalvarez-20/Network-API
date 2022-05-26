@@ -1,11 +1,11 @@
 
 import json
 from flask import Response, request
-from utils.decorators import netapi_decorator
+from api.utils.decorators import netapi_decorator
 from pymongo import ReturnDocument
 from bson.objectid import ObjectId
-from utils.session_auth import validate_session
-from utils.response import netapi_response
+from api.utils.session_auth import validate_session
+from api.utils.response import netapi_response
 
 config_params = ["actual_log", "logs_timer", "map_interval", \
     "interface_interval", "device_interval", \

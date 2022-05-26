@@ -1,11 +1,11 @@
 import logging
 import os
 from functools import wraps
-from database.mongo import get_mongo_client
+from api.database.mongo import get_mongo_client
 from datetime import datetime
 from pathlib import Path
 
-from utils.configs import get_mongo_config
+from api.utils.configs import get_mongo_config
 
 LOGS_PATH = f"{Path.home()}/logs"
 
