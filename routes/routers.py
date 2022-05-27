@@ -86,21 +86,18 @@ def modify_router_config(log=None, db=None):
         for interface in interfaces:
             log.info(f"Configurando interfaz {interface['interface']}")
             send_command(router_conn, f"int {interface['interface']}")
+            send_command(router_conn, f'ip add {interface["ip"]} {interface["mask"]}')
+            send_command(router_conn, "no shut")
+            log.debug(f"Se ha configurado la IP: {interface['ip']} en la interfaz {interface['interface']}")
             if "shutdown" in interface and interface["shutdown"] == True:
                 log.debug(f"Se ha apagado la interfaz {interface['interface']}")
                 send_command(router_conn, "shut")
-            elif "remove" in interface and interface["remove"] == True:
+            if "remove" in interface and interface["remove"] == True:
                 log.debug(
                     f"Se ha eliminado IP de la interfaz {interface['interface']}")
                 send_command(router_conn, "no ip add *")
-            elif "power" in interface and interface["power"] == True:
+            if "power" in interface and interface["power"] == True:
                 log.debug(f"Se ha encendido la interfaz {interface['interface']}")
-                send_command(router_conn, "no shut")
-            else:
-                log.debug(
-                    f"Se ha configurado la IP: {interface['ip']} en la interfaz {interface['interface']}")
-                send_command(
-                    router_conn, f'ip add {interface["ip"]} {interface["mask"]}')
                 send_command(router_conn, "no shut")
 
         send_command(router_conn, "exit")
@@ -123,8 +120,7 @@ def modify_router_config(log=None, db=None):
 
         execute_commands(router_conn, commands, original_name)
 
-    log.info(
-        f"Se ha terminado de configurar los cambios al SSH en el router {original_name}")
+        log.info(f"Se ha terminado de configurar los cambios al SSH en el router {original_name}")
 
     if "snmp-v3" in request_body:
         group = get_snmp_config()
@@ -189,11 +185,16 @@ def modify_users_in_router(log = None):
         log.info(f"Modificando usuario: {old_user}")
         send_command(router_conn, f"no username {old_user}")
         if delete:
+            send_command(router_conn, "exit")
+            send_command(router_conn, "wr mem")
             return netapi_response({ "message": "Se ha eliminado el usuario", "method": method}, 200)
 
     log.info(f"Añadiendo nuevo usuario: {user} - {priv}")
     # Configurar usuario
     send_command(router_conn, f"username {user} privilege {priv} password {pwd}")
+
+    send_command(router_conn, "exit")
+    send_command(router_conn, "wr mem")
 
     log.info(f"Se ha terminado de modificar los usuarios via {method}")
     return netapi_response({"message": "Se ha modificado los usuarios en el router", "method": method}, 200)
