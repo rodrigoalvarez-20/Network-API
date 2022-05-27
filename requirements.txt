@@ -5,7 +5,6 @@ cffi==1.15.0
 click==8.0.4
 configparser==5.2.0
 cryptography==36.0.2
-dataclasses==0.8
 dnspython==2.2.1
 Flask==2.0.3
 Flask-Cors==3.0.10
@@ -18,7 +17,6 @@ Jinja2==3.0.3
 keyring==23.4.1
 MarkupSafe==2.0.1
 pexpect==4.8.0
-pkg_resources==0.0.0
 ptyprocess==0.7.0
 pyasn1==0.4.8
 pycodestyle==2.8.0
