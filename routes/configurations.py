@@ -10,7 +10,7 @@ from api.utils.response import netapi_response
 config_params = ["actual_log", "logs_timer", "map_interval", \
     "interface_interval", "device_interval", \
     "received_packets_percentage", "lost_packets_percentage", \
-    "damaged_packets_percentage", "device_mon", "int_mon" ]
+    "damaged_packets_percentage" ]
 
 @netapi_decorator("general", "configs")
 def get_all_app_config(log = None, db = None):
@@ -36,7 +36,7 @@ def update_configs(log = None, db = None):
     
     for p in config_params:
         if p in req_body:
-            params[p] = req_body[p] if p in ["actual_log", "device_mon", "int_mon"] else int(req_body[p])
+            params[p] = req_body[p] if p in ["actual_log"] else int(req_body[p])
     
     
     configs_in_db = list(db.find())

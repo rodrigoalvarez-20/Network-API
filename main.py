@@ -4,7 +4,7 @@ from flask import Flask, request
 from api.utils.configs import get_general_config
 from api.monitor import start_mapping
 from api.routes.configurations import get_all_app_config, update_configs
-from api.routes.routers import display_network, modify_router_config
+from api.routes.routers import config_monitor, display_network, get_monitor_config, modify_router_config
 from api.routes.users import change_password, delete_user, get_users, login_user, register_user, send_reset_email, update_profile
 from api.utils.common import auth
 from api.utils.tokens_handler import search_used_token
@@ -42,6 +42,9 @@ app.add_url_rule("/api/app/configurations", "update_configs", update_configs, me
 # Seccion de routers
 app.add_url_rule("/api/routers/graph", "display_network", display_network, methods=["GET"])
 app.add_url_rule("/api/routers/config", "modify_router_config", modify_router_config, methods=["PATCH"])
+
+app.add_url_rule("/api/routers/monitor", "config_monitor", config_monitor, methods=["POST"])
+app.add_url_rule("/api/routers/monitor", "get_monitor_config", get_monitor_config, methods=["GET"])
 
 #app.add_url_rule("/api/routers/users/add", "add_user_to_router", add_user_to_router, methods=["POST"])
 #app.add_url_rule("/api/routers/users/modify", "update_user_from_router", update_user_from_router, methods=["POST"])
