@@ -108,7 +108,7 @@ def modify_router_config(log=None, db=None):
         activate = bool(request_body["ssh_v2"])
         if activate == True:
             commands = [f"enable secret {secret}", "service password encryption",
-                        "int lo0", "ip add 10.0.0.1 255.255.255.0", "no shut",
+                        "int lo0", "ip add 1.0.0.1 255.255.255.0", "no shut",
                         "crypto key generate rsa usage-keys label sshkey modulus 1024", "ip ssh rsa keypair-name sshkey",
                         "ip ssh v 2", "ip ssh time-out 30", "ip ssh authentication-retries 3", "line vty 0 15", f"password {vty}",
                         "login local", "transport input ssh telnet", "exit", f"username {usr} privilege 15 {pwd}"]

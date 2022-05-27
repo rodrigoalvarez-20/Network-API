@@ -35,8 +35,8 @@ def start_mapping(log=None, db=None):
     # for net in nets:
     #    routers_net += get_os_in_network(net)
 
-    routers_net.append("10.0.0.254")
-    routers_net.append("46.5.0.254")
+    routers_net.append("192.168.1.254")
+    routers_net.append("192.168.2.254")
 
     log.info(f"Redes disponibles: {','.join(routers_net)}")
 
