@@ -99,21 +99,40 @@ def get_router_hostname(tn : pexpect.spawn, log = None):
     return out.split("\n")[1].split(" ")[1].replace("\r", "")
 
 @netapi_decorator("mapping")
+def get_users_in_router(tn : pexpect.spawn, log = None):
+    log.info("Obteniendo la lista de usuarios registrados en el dispositivo")
+    send_command(tn, "terminal lenght 0")
+    sh_users = send_command(tn, "sh run | s username").split("\n")
+    sh_users.pop(0)
+    #print(sh_users)
+    users_in_rt = []
+    for usr in sh_users:
+        usr_data = usr.split(" ")
+        if len(usr_data) > 1:
+            users_in_rt.append({ "username": usr_data[1], "privilege": usr_data[3] })
+    return users_in_rt
+
+@netapi_decorator("mapping")
 def get_interfaces_info(child: pexpect.spawn, log = None):
     log.info("Obteniendo informacion de las interfaces del dispositivo")
-    child.sendline("sh ip int brief")
-    child.expect("#")
-    child.sendline("sh ip int brief")
-    child.expect("#")
-    interfaces_info : list = child.before.decode().split("\n")
-    interfaces_info.pop(0)
-    interfaces_info.pop(0)
+    send_command(child, "terminal length 0")
+    sh_ip_brf = send_command(child, "sh ip int brief").split("\n")
+    sh_ip_brf.pop(0)
+    sh_ip_brf.pop(0)
     interfaces = []
-    for int in interfaces_info:
+    for int in sh_ip_brf:
         int_data =  [ str(x) for x in filter(lambda x: x != "", int.split(" ")) if str(x) != "\r"] 
         if len(int_data) > 1:
             log.debug("Interfaz encontrada")
-            interfaces.append({ "interface": int_data[0], "ip": int_data[1], "status": int_data[4] if int_data[4] != "administratively" else int_data[5] })
+            log.debug("Buscando mascara de red")
+            
+            net_mask = send_command(child, f"sh run | s ip address {int_data[1]}").split("\n")
+            net_mask.pop(0)
+            int_mask = "0.0.0.0"
+            if len(net_mask) > 1:
+                int_mask = net_mask[0].split(int_data[1])[1].replace("\r", "")
+            
+            interfaces.append({ "interface": int_data[0], "ip": int_data[1], "mask": int_mask, "status": int_data[4] if int_data[4] != "administratively" else int_data[5] })
     log.info(f"Interfaces encontradas: {json.dumps(interfaces)}")
     return interfaces
 

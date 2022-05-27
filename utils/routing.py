@@ -67,3 +67,4 @@ def connect_to_router(ip_list: list, method: str, log = None):
     except Exception as ex:
         log.error(str(ex))
         return {"error":"Ha ocurrido un error al conectar con el dispositivo"}
+

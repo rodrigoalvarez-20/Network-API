@@ -11,7 +11,7 @@ from time import sleep, time
 import json
 from api.utils.configs import get_general_config
 from api.utils.decorators import netapi_decorator
-from api.utils.mapping import check_snmp_in_router, get_ip_from_local_address, get_os_in_network, get_router_protocols, get_ssh_status, \
+from api.utils.mapping import check_snmp_in_router, get_ip_from_local_address, get_os_in_network, get_router_protocols, get_ssh_status, get_users_in_router, \
     login_into_router, get_router_hostname, get_interfaces_info, get_cdp_output
 
 @netapi_decorator("mapping", "configurations")
@@ -52,12 +52,16 @@ def start_mapping(log=None, db=None):
         # Contiene la conexion telnet del dispositivo
         tn_rt = login_into_router(actual_route)
         hostname = get_router_hostname(tn_rt)
+
+        # Obtener la lista de usuarios registrados
+        users = get_users_in_router(tn_rt)
+
         router_interfaces = get_interfaces_info(tn_rt)
         # Obtener el protocolo (Listo)
         protocols_in_router = get_router_protocols(tn_rt)
         # Obtener si tiene el estado del SSH (Listo)
         ssh_status = get_ssh_status(tn_rt)
-        # Obtener el estado del SNMP
+        # Obtener el estado del SNMP (Listo)
         snmp_stat = check_snmp_in_router(tn_rt)
         # Si tiene el SNMP activo, obtener la informacion
         # Me importa el OID especifico del dispositivo, hostname, contact info
@@ -65,6 +69,7 @@ def start_mapping(log=None, db=None):
         routers_map[hostname] = {
             "name": hostname,
             "ip": router,
+            "users": users,
             "ssh_v2": ssh_status,
             "snmp-v3": snmp_stat,
             "protocols": protocols_in_router,
@@ -77,6 +82,7 @@ def start_mapping(log=None, db=None):
             actual_route.append(data["address"])
             child_tn = login_into_router(actual_route)
             ch_hostname = get_router_hostname(child_tn)
+            ch_users = get_users_in_router(child_tn)
             child_interfaces = get_interfaces_info(child_tn)
 
             ssh_status_child = get_ssh_status(child_tn)
@@ -95,6 +101,7 @@ def start_mapping(log=None, db=None):
                 routers_map[ch_hostname] = {
                     "name": ch_hostname,
                     "ip": data["address"],
+                    "users": ch_users,
                     "ssh_v2": ssh_status_child,
                     "snmp-v3": child_snmp_stat,
                     "protocols": protocols_in_child_router,

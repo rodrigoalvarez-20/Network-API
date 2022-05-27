@@ -32,12 +32,11 @@ def display_network(log=None, db=None):
             if act_dev in network_schema:
                 network_schema[act_dev]["monitor_status"] = act_status
 
-            if len(act_ints) > 0:
-                for i, dev in enumerate(network_schema[act_dev]["interfaces"]):
-                    matchs = [x for x in act_ints if x["name"]
-                              == dev["interface"]]
-                    if len(matchs) > 0:
-                        network_schema[act_dev]["interfaces"][i]["monitor_status"] = matchs[0]["status"]
+                if len(act_ints) > 0:
+                    for i, dev in enumerate(network_schema[act_dev]["interfaces"]):
+                        matchs = [x for x in act_ints if x["name"] == dev["interface"]]
+                        if len(matchs) > 0:
+                            network_schema[act_dev]["interfaces"][i]["monitor_status"] = matchs[0]["status"]
 
     # with open("topo_map.json", "r") as t:
     #    network_schema = json.loads(t.read())
@@ -45,6 +44,9 @@ def display_network(log=None, db=None):
     return netapi_response({"schema": network_schema}, 200)
 
 # VERSION 2
+
+#@netapi_decorator("network")
+
 
 @netapi_decorator("network", "monitor")
 def modify_router_config(log=None, db=None):
@@ -74,26 +76,28 @@ def modify_router_config(log=None, db=None):
         log.info(f"Actualizado nombre del dispositivo: {original_name}")
         new_name = request_body["hostname"]
         send_command(router_conn, f"hostname {new_name}")
+        # Actualizar el documento de monitor, ya que puede haber una coincidencia
+        db.update_one({"device": original_name}, {"$set": { "device": new_name }})
 
     if "interfaces" in request_body:
         log.info(f"Cambiando interfaces del router {original_name}")
         interfaces = request_body["interfaces"]
         for interface in interfaces:
-            log.info(f"Configurando interfaz {interface['name']}")
-            send_command(router_conn, f"int {interface['name']}")
+            log.info(f"Configurando interfaz {interface['interface']}")
+            send_command(router_conn, f"int {interface['interface']}")
             if "shutdown" in interface and interface["shutdown"] == True:
-                log.debug(f"Se ha apagado la interfaz {interface['name']}")
+                log.debug(f"Se ha apagado la interfaz {interface['interface']}")
                 send_command(router_conn, "shut")
             elif "remove" in interface and interface["remove"] == True:
                 log.debug(
-                    f"Se ha eliminado IP de la interfaz {interface['name']}")
+                    f"Se ha eliminado IP de la interfaz {interface['interface']}")
                 send_command(router_conn, "no ip add *")
             elif "power" in interface and interface["power"] == True:
-                log.debug(f"Se ha encendido la interfaz {interface['name']}")
+                log.debug(f"Se ha encendido la interfaz {interface['interface']}")
                 send_command(router_conn, "no shut")
             else:
                 log.debug(
-                    f"Se ha configurado la IP: {interface['ip']} en la interfaz {interface['name']}")
+                    f"Se ha configurado la IP: {interface['ip']} en la interfaz {interface['interface']}")
                 send_command(
                     router_conn, f'ip add {interface["ip"]} {interface["mask"]}')
                 send_command(router_conn, "no shut")
