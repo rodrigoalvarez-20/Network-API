@@ -45,9 +45,6 @@ def display_network(log=None, db=None):
 
 # VERSION 2
 
-#@netapi_decorator("network")
-
-
 @netapi_decorator("network", "monitor")
 def modify_router_config(log=None, db=None):
     session_data = validate_session()
@@ -67,7 +64,11 @@ def modify_router_config(log=None, db=None):
     router_conn = connect_to_router(ip_list, method)
 
     if type(router_conn) == dict:
-        return netapi_response(router_conn, 500)
+        if router_conn["error"] == "Tiempo de espera de conexión con el dispositivo excedido":
+            method = "telnet"
+            router_conn = connect_to_router(ip_list, method)
+        else:
+            return netapi_response(router_conn, 500)
 
     send_command(router_conn, "config t")
 
@@ -157,6 +158,45 @@ def modify_router_config(log=None, db=None):
     start_mapping()
 
     return netapi_response({"message": "Se ha actualizado la configuracion del router"}, 200)
+
+@netapi_decorator("network")
+def modify_users_in_router(log = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+    request_body = request.get_json()
+
+    ip_list = request_body["route"]
+    old_user = request_body["old_username"] if "old_username" in request_body else None
+    method = request_body["method"]
+    user = request_body["username"]
+    pwd = request_body["pwd"]
+    priv = request_body["privilege"]
+    delete = request_body["delete"] if "delete" in request_body else None
+
+    router_conn = connect_to_router(ip_list, method)
+
+    if type(router_conn) == dict:
+        if router_conn["error"] == "Tiempo de espera de conexión con el dispositivo excedido":
+            method = "telnet"
+            router_conn = connect_to_router(ip_list, method)
+        else:
+            return netapi_response(router_conn, 500)
+
+    send_command(router_conn, "config t")
+
+    if old_user:
+        log.info(f"Modificando usuario: {old_user}")
+        send_command(router_conn, f"no username {old_user}")
+        if delete:
+            return netapi_response({ "message": "Se ha eliminado el usuario", "method": method}, 200)
+
+    log.info(f"Añadiendo nuevo usuario: {user} - {priv}")
+    # Configurar usuario
+    send_command(router_conn, f"username {user} privilege {priv} password {pwd}")
+
+    log.info(f"Se ha terminado de modificar los usuarios via {method}")
+    return netapi_response({"message": "Se ha modificado los usuarios en el router", "method": method}, 200)
 
 
 @netapi_decorator("network", "monitor")

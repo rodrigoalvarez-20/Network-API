@@ -63,7 +63,7 @@ def connect_to_router(ip_list: list, method: str, log = None):
         return child
     except pexpect.TIMEOUT:
         log.warning(f"Tiempo de espera excedido")
-        return { "error": "Tiempo de espera de conexión con el dispostivo excedido" }
+        return { "error": "Tiempo de espera de conexión con el dispositivo excedido" }
     except Exception as ex:
         log.error(str(ex))
         return {"error":"Ha ocurrido un error al conectar con el dispositivo"}
