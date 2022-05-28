@@ -1,5 +1,3 @@
-from copyreg import constructor
-from datetime import datetime
 import json
 from pprint import pprint
 
@@ -37,9 +35,6 @@ def display_network(log=None, db=None):
                         matchs = [x for x in act_ints if x["name"] == dev["interface"]]
                         if len(matchs) > 0:
                             network_schema[act_dev]["interfaces"][i]["monitor_status"] = matchs[0]["status"]
-
-    # with open("topo_map.json", "r") as t:
-    #    network_schema = json.loads(t.read())
 
     return netapi_response({"schema": network_schema}, 200)
 
@@ -197,6 +192,7 @@ def modify_users_in_router(log = None):
     send_command(router_conn, "wr mem")
 
     log.info(f"Se ha terminado de modificar los usuarios via {method}")
+    start_mapping()
     return netapi_response({"message": "Se ha modificado los usuarios en el router", "method": method}, 200)
 
 @netapi_decorator("network")
@@ -224,22 +220,24 @@ def update_router_protocols(log = None):
         else:
             return netapi_response(router_conn, 500)
 
+    protocols = get_router_protocols(router_conn)
+    
     send_command(router_conn, "config t")
 
-    protocols = get_router_protocols(router_conn)
-
-    delete_protocols_in_router(protocols)
+    delete_protocols_in_router( router_conn, protocols)
 
     if new_protocol == "rip":
         send_command(router_conn, "router rip")
         send_command(router_conn, "ver 2")
-        execute_commands(router_conn, networks)
+        execute_commands(router_conn, networks, access_ip)
         log.info("Se ha terminado de configurar el protocolo rip")
     else:
         protocol_id = request_body["protocol_id"]
         send_command(router_conn, f"router {new_protocol} {protocol_id}")
-        execute_commands(router_conn, networks)
+        execute_commands(router_conn, networks, access_ip)
         log.info(f"Se ha terminado de configurar el protocolo {new_protocol}")
+
+    start_mapping()
     
     return netapi_response({ "message": "Se ha terminado de configurar el protocolo", "method": method }, 200)
 

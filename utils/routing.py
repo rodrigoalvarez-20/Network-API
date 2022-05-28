@@ -72,6 +72,6 @@ def connect_to_router(ip_list: list, method: str, log = None):
 def delete_protocols_in_router(conn: Union[pexpect.spawn, pxssh.pxssh], protocols: list, log = None):
     for protocol in protocols:
         log.info(f"Eliminando protocolo {protocol}")
-        send_command(conn, f"no {protocol}")
+        send_command(conn, f"no router {protocol}")
 
 
