@@ -68,3 +68,10 @@ def connect_to_router(ip_list: list, method: str, log = None):
         log.error(str(ex))
         return {"error":"Ha ocurrido un error al conectar con el dispositivo"}
 
+@netapi_decorator("network")
+def delete_protocols_in_router(conn: Union[pexpect.spawn, pxssh.pxssh], protocols: list, log = None):
+    for protocol in protocols:
+        log.info(f"Eliminando protocolo {protocol}")
+        send_command(conn, f"no {protocol}")
+
+

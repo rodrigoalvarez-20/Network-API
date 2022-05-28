@@ -4,8 +4,8 @@ import json
 from pprint import pprint
 
 from api.utils.configs import get_gns3_config, get_gns3_ssh_config, get_snmp_config
-from api.utils.mapping import get_ip_from_local_address, send_command
-from api.utils.routing import connect_to_router, execute_commands
+from api.utils.mapping import get_ip_from_local_address, get_router_protocols, send_command
+from api.utils.routing import connect_to_router, delete_protocols_in_router, execute_commands
 from api.utils.session_auth import validate_session
 from api.utils.decorators import netapi_decorator
 from api.utils.response import netapi_response
@@ -199,6 +199,50 @@ def modify_users_in_router(log = None):
     log.info(f"Se ha terminado de modificar los usuarios via {method}")
     return netapi_response({"message": "Se ha modificado los usuarios en el router", "method": method}, 200)
 
+@netapi_decorator("network")
+def update_router_protocols(log = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+    request_body = request.get_json()
+
+    new_protocol = request_body["protocol"]
+    networks = request_body["networks"]
+    ip_list = request_body["route"]
+    method = request_body["method"]
+
+    access_ip = ip_list[len(ip_list)-1]
+
+    log.info(f"Modificando los protocolos del router {access_ip}")
+    
+    router_conn = connect_to_router(ip_list, method)
+
+    if type(router_conn) == dict:
+        if router_conn["error"] == "Tiempo de espera de conexión con el dispositivo excedido":
+            method = "telnet"
+            router_conn = connect_to_router(ip_list, method)
+        else:
+            return netapi_response(router_conn, 500)
+
+    send_command(router_conn, "config t")
+
+    protocols = get_router_protocols(router_conn)
+
+    delete_protocols_in_router(protocols)
+
+    if new_protocol == "rip":
+        send_command(router_conn, "router rip")
+        send_command(router_conn, "ver 2")
+        execute_commands(router_conn, networks)
+        log.info("Se ha terminado de configurar el protocolo rip")
+    else:
+        protocol_id = request_body["protocol_id"]
+        send_command(router_conn, f"router {new_protocol} {protocol_id}")
+        execute_commands(router_conn, networks)
+        log.info(f"Se ha terminado de configurar el protocolo {new_protocol}")
+    
+    return netapi_response({ "message": "Se ha terminado de configurar el protocolo", "method": method }, 200)
+
 
 @netapi_decorator("network", "monitor")
 def config_monitor(log=None, db=None):
@@ -223,7 +267,6 @@ def config_monitor(log=None, db=None):
         return netapi_response({"message": "Se ha actualizado la configuración de monitoreo"}, 200)
     else:
         return netapi_response({"message": "No se han realizado cambios en la configuración de monitoreo"}, 200)
-
 
 @netapi_decorator("network", "monitor")
 def get_monitor_config(log=None, db=None):
