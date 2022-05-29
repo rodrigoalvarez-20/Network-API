@@ -22,7 +22,7 @@ CORS(app)
 
 ah, ap, ch, cp, _ = get_general_config()
 
-socketio = SocketIO(app, cors_allowed_origins=[f"http://{ch}:{cp}"],
+socketio = SocketIO(app, cors_allowed_origins=[f"http://{ch}:{cp}", "http://192.168.100.141:3000"],
                     always_connect=True, async_mode="threading")
 
 
