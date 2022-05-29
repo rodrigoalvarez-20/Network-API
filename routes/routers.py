@@ -124,14 +124,18 @@ def modify_router_config(log=None, db=None):
             usr, pwd, secret, vty = get_gns3_ssh_config()
             inets = get_ip_from_local_address(["192.168.100.0"])
             ips = ["2".join(x.rsplit("0", 1)) for x in inets]
-            commands = [f"snmp-server group {group} v3 auth", f"snmp-server user {usr} {group} v3 auth md5 {pwd} priv des56 {pwd}",
-                        "snmp-server enable traps"]
+            print(ips)
+            commands = [f"snmp-server community asr_network rw", f"snmp-server group {group} v3 auth write V3Write", 
+                f"snmp-server user {usr} {group} v3 auth md5 {pwd} priv des56 {pwd}", "snmp-server view V3Write iso included"]
+            
             for ip in ips:
-                commands.append(
-                    f"snmp-server host {ip} {usr} alarms config cpu eigrp ospf snmp")
-                commands.append(
-                    f"snmp-server host {ip} informs version 2c {usr} alarms config cpu eigrp ospf snmp")
-
+                commands.append(f"snmp-server host {ip} version 3 auth {usr}")
+            
+            commands.append("snmp-server enable traps")
+            for ip in ips:
+                commands.append(f"snmp-server host {ip} {usr} config snmp")
+                commands.append(f"snmp-server host {ip} informs version 2c {usr} config snmp")
+                
             log.info(
                 f"Configurando SNMP-V3 en el router {original_name} - {access_ip}")
         else:
@@ -236,6 +240,10 @@ def update_router_protocols(log = None):
         send_command(router_conn, f"router {new_protocol} {protocol_id}")
         execute_commands(router_conn, networks, access_ip)
         log.info(f"Se ha terminado de configurar el protocolo {new_protocol}")
+
+    send_command(router_conn, "exit")
+    send_command(router_conn, "exit")
+    send_command(router_conn, "wr mem")
 
     start_mapping()
     

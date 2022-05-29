@@ -13,6 +13,7 @@ from api.utils.configs import get_general_config
 from api.utils.decorators import netapi_decorator
 from api.utils.mapping import check_snmp_in_router, get_ip_from_local_address, get_os_in_network, get_router_protocols, get_ssh_status, get_users_in_router, \
     login_into_router, get_router_hostname, get_interfaces_info, get_cdp_output
+from api.utils.snmpy import COMMANDS, snmp_get
 
 @netapi_decorator("mapping", "configurations")
 def get_wait_interval(log=None, db=None):
@@ -62,8 +63,7 @@ def start_mapping(log=None, db=None):
         ssh_status = get_ssh_status(tn_rt)
         # Obtener el estado del SNMP (Listo)
         snmp_stat = check_snmp_in_router(tn_rt)
-        # Si tiene el SNMP activo, obtener la informacion
-        # Me importa el OID especifico del dispositivo, hostname, contact info
+        
         cdp_data = get_cdp_output(tn_rt, hosts_maped, hostname)
         routers_map[hostname] = {
             "name": hostname,

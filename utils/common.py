@@ -12,8 +12,8 @@ from email.mime.image import MIMEImage
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey.RSA import import_key
 
-#"wVs9pwr-aKLhVKRvv19sKU2TVpFIyOgat206qbKzlvc="
-enc_pwd = get_password("network_api_service", "net_admin") 
+##get_password("network_api_service", "net_admin") 
+enc_pwd = "wVs9pwr-aKLhVKRvv19sKU2TVpFIyOgat206qbKzlvc="
 pKey = f"{os.getcwd()}/keys/public.pub"
 pvKey = f"{os.getcwd()}/keys/private.key"
 
