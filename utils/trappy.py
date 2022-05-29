@@ -10,7 +10,7 @@ snmp_engine = engine.SnmpEngine()
 usr, pwd = get_gns3_config()
 
 config.addTransport(snmp_engine, udp.domainName + (1,),
-                    udp.UdpTransport().openServerMode(("192.168.1.2", 162)))
+                    udp.UdpTransport().openServerMode(("0.0.0.0", 162)))
 
 config.addV1System(snmp_engine, "asr_network", "asr_network")
 
@@ -19,13 +19,13 @@ config.addV1System(snmp_engine, "asr_network", "asr_network")
 #    privProtocol=config.usmDESPrivProtocol
 #    )
 
-@netapi_decorator("network")
-def traps_cb(engine, _, ctx_id, ctx_name, var_binds, __, log = None):
+@netapi_decorator("network", "email_queue")
+def traps_cb(engine, _, ctx_id, ctx_name, var_binds, __, db = None, log = None):
     exec_context = engine.observer.getExecutionContext('rfc3412.receiveMessage:request')
     log.info("Se ha recibido una notificacion SNMP")
-    print(exec_context)
-    print(ctx_id.prettyPrint())
-    print(ctx_name.prettyPrint())
+    sender = '@'.join([str(x) for x in exec_context['transportAddress']]) #exec_context["transportAddress"]
+    version =  exec_context['securityModel']
+    group_name = exec_context['securityName']
     for name, val in var_binds:
         # Ver como obtener informacion y encolar el mensaje
         print(f"{name.prettyPrint()} = {val.prettyPrint()}")

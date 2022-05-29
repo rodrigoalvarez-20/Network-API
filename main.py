@@ -2,9 +2,9 @@ from multiprocessing import Process
 
 from flask import Flask, request
 from api.utils.configs import get_general_config
-from api.monitor import start_mapping
+from api.utils.monitor import start_mapping
 from api.routes.configurations import get_all_app_config, update_configs
-from api.routes.routers import config_monitor, display_network, get_monitor_config, modify_router_config, modify_users_in_router, update_router_protocols
+from api.routes.routers import config_monitor, display_network, get_mib_info, get_monitor_config, modify_router_config, modify_users_in_router, update_router_protocols
 from api.routes.users import change_password, delete_user, get_users, login_user, register_user, send_reset_email, update_profile
 from api.utils.common import auth
 from api.utils.tokens_handler import search_used_token
@@ -48,6 +48,8 @@ app.add_url_rule("/api/routers/protocol", "update_router_protocols", update_rout
 app.add_url_rule("/api/routers/monitor", "config_monitor", config_monitor, methods=["POST"])
 app.add_url_rule("/api/routers/monitor", "get_monitor_config", get_monitor_config, methods=["GET"])
 
+
+app.add_url_rule("/api/routers/mib/<host>", "get_mib_info", get_mib_info, methods=["GET"])
 
 #app.add_url_rule("/api/routers/protocol", "modify_router_protocol", modify_router_protocol, methods=["POST"])
 

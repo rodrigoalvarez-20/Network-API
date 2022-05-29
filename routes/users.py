@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import os
 from api.utils.configs import get_general_config
 from flask import Response, request
@@ -10,6 +11,7 @@ from bson.objectid import ObjectId
 
 from api.utils.session_auth import validate_session
 from api.utils.response import netapi_response
+from utils.notify import save_notify
 
 @netapi_decorator("users", "users")
 def register_user(log=None, db=None):
@@ -95,11 +97,14 @@ def send_reset_email(log=None, db=None):
         
         body_msg = body_msg.replace("{email}", email)
         body_msg = body_msg.replace("{url}", reset_link)
+        body_msg = body_msg.replace("{sentAt}", datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
         logo_image = None
         with open(f"{os.getcwd()}/templates/logo.png", "rb") as logo:
             logo_image = logo.read()
 
-        send_email_message("servicio-network@noreply.mx", email, "Reestablecimiento de contraseña", body_msg, logo_image)
+        save_notify("servicio_network@noreply.ipn.mx", email, "Reestablecimiento de contraseña", body_msg, logo_image)
+
+        #send_email_message("servicio-network@noreply.mx", email, "Reestablecimiento de contraseña", body_msg, logo_image)
         log.info("Se ha enviado correctamente el email")
         return netapi_response({"message":"Se ha enviado el correo de reestablecimiento"}, 200)
     else:

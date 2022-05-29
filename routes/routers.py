@@ -7,8 +7,10 @@ from api.utils.routing import connect_to_router, delete_protocols_in_router, exe
 from api.utils.session_auth import validate_session
 from api.utils.decorators import netapi_decorator
 from api.utils.response import netapi_response
-from api.monitor import start_mapping
+from api.utils.monitor import start_mapping
 from flask import Response, request
+
+from utils.snmpy import COMMANDS, snmp_get
 
 
 @netapi_decorator("network", "network_map")
@@ -130,11 +132,17 @@ def modify_router_config(log=None, db=None):
             
             for ip in ips:
                 commands.append(f"snmp-server host {ip} version 3 auth {usr}")
+                commands.append(f"snmp-server host {ip} version 2c {group}")
             
             commands.append("snmp-server enable traps")
+            commands.append("snmp-server enable traps config")
+            commands.append("snmp-server enable traps snmp")
+            
             for ip in ips:
-                commands.append(f"snmp-server host {ip} {usr} config snmp")
-                commands.append(f"snmp-server host {ip} informs version 2c {usr} config snmp")
+                commands.append(f"snmp-server host {ip} {usr} config")
+                commands.append(f"snmp-server host {ip} {usr} snmp")
+                commands.append(f"snmp-server host {ip} informs version 2c {usr} config")
+                commands.append(f"snmp-server host {ip} informs version 2c {usr} snmp")
                 
             log.info(
                 f"Configurando SNMP-V3 en el router {original_name} - {access_ip}")
@@ -283,3 +291,24 @@ def get_monitor_config(log=None, db=None):
     configs = list(db.find({}, {"_id": 0}))
 
     return netapi_response({"configs": configs}, 200)
+
+@netapi_decorator("network")
+def get_mib_info(host: str = "", log = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+
+    if host == "":
+        return netapi_response({ "error": "El valor de host es incorrecto" }, 400)
+    
+    cmds = [
+        COMMANDS["DESC"],
+        COMMANDS["UPTIME"],
+        COMMANDS["CONTACT"],
+        COMMANDS["NAME"],
+        COMMANDS["LOCATION"],
+    ]
+
+    mib_data = snmp_get(host, cmds)
+
+    return netapi_response({"mib": mib_data}, 200)
