@@ -3,7 +3,7 @@ from pysnmp.carrier.asyncore.dgram import udp
 from pysnmp.entity.rfc3413 import ntfrcv
 
 from api.utils.configs import get_gns3_config
-from utils.decorators import netapi_decorator
+from api.utils.decorators import netapi_decorator
 
 snmp_engine = engine.SnmpEngine()
 
