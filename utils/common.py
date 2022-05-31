@@ -83,7 +83,7 @@ def send_email_message(sender: str, to: str, subject: str, body: str, image_data
 
     if(image_data):
         msg_img = MIMEImage(image_data)
-        msg_img.add_header('Content-ID', '<logo_image>')
+        msg_img.add_header('Content-ID', '<img_header>')
         message.attach(msg_img)
 
     context = ssl.create_default_context()

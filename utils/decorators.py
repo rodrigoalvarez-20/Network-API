@@ -17,6 +17,7 @@ routes = {
     "users": f"{LOGS_PATH}/users/netapi_users",
     "general": f"{LOGS_PATH}/general/netapi_general",
     "mapping": f"{LOGS_PATH}/mapping/netapi_mapper_service",
+    "monitor": f"{LOGS_PATH}/mapping/netapi_monitor_service",
 }
 
 

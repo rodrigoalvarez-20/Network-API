@@ -1,16 +1,19 @@
+from datetime import datetime
 import json
+import os
 from pprint import pprint
 
-from api.utils.configs import get_gns3_config, get_gns3_ssh_config, get_snmp_config
+from api.utils.configs import get_gns3_ssh_config, get_snmp_config
 from api.utils.mapping import get_ip_from_local_address, get_router_protocols, send_command
 from api.utils.routing import connect_to_router, delete_protocols_in_router, execute_commands
 from api.utils.session_auth import validate_session
 from api.utils.decorators import netapi_decorator
 from api.utils.response import netapi_response
-from api.utils.monitor import start_mapping
+from api.utils.topology_mapper import start_mapping
+from api.utils.notify import save_notify
 from flask import Response, request
 
-from utils.snmpy import COMMANDS, snmp_get
+from utils.snmpy import COMMANDS, snmp_get, snmp_set
 
 
 @netapi_decorator("network", "network_map")
@@ -120,7 +123,7 @@ def modify_router_config(log=None, db=None):
         log.info(f"Se ha terminado de configurar los cambios al SSH en el router {original_name}")
 
     if "snmp-v3" in request_body:
-        group = get_snmp_config()
+        group, _ = get_snmp_config()
         activate = bool(request_body["snmp-v3"])
         if activate == True:
             usr, pwd, secret, vty = get_gns3_ssh_config()
@@ -158,7 +161,7 @@ def modify_router_config(log=None, db=None):
     send_command(router_conn, "exit")
     send_command(router_conn, "wr mem")
 
-    start_mapping()
+    #start_mapping()
 
     return netapi_response({"message": "Se ha actualizado la configuracion del router"}, 200)
 
@@ -204,7 +207,7 @@ def modify_users_in_router(log = None):
     send_command(router_conn, "wr mem")
 
     log.info(f"Se ha terminado de modificar los usuarios via {method}")
-    start_mapping()
+    #start_mapping()
     return netapi_response({"message": "Se ha modificado los usuarios en el router", "method": method}, 200)
 
 @netapi_decorator("network")
@@ -253,7 +256,7 @@ def update_router_protocols(log = None):
     send_command(router_conn, "exit")
     send_command(router_conn, "wr mem")
 
-    start_mapping()
+    #start_mapping()
     
     return netapi_response({ "message": "Se ha terminado de configurar el protocolo", "method": method }, 200)
 
@@ -268,9 +271,11 @@ def config_monitor(log=None, db=None):
     if "device" in request_body:
         device = request_body["device"]
         status = bool(request_body["monitor"])
+        ip_addr = request_body["ip"]
         params = {
             "device": device,
-            "status": status
+            "status": status,
+            "addr": ip_addr
         }
 
         if "interfaces" in request_body:
@@ -297,10 +302,12 @@ def get_mib_info(host: str = "", log = None):
     session_data = validate_session()
     if type(session_data) is Response:
         return session_data
-
+    
     if host == "":
         return netapi_response({ "error": "El valor de host es incorrecto" }, 400)
     
+    log.info(f"Solicitando los datos MIB del dispositivo: {host}")
+
     cmds = [
         COMMANDS["DESC"],
         COMMANDS["UPTIME"],
@@ -312,3 +319,52 @@ def get_mib_info(host: str = "", log = None):
     mib_data = snmp_get(host, cmds)
 
     return netapi_response({"mib": mib_data}, 200)
+
+
+@netapi_decorator("network")
+def update_mib_info(host: str, log = None):
+    session_data = validate_session()
+    if type(session_data) is Response:
+        return session_data
+    
+    if host == "":
+        return netapi_response({ "error": "El valor de host es incorrecto" }, 400)
+    
+    log.info(f"Actualizando la informacion MIB del dispositivo: {host}")
+
+    body = request.get_json()
+
+    update_params = {
+        COMMANDS["CONTACT"]: body["contact"],
+        COMMANDS["NAME"]: body["name"],
+        COMMANDS["LOCATION"]: body["location"],
+        COMMANDS["DESC"]: body["description"]
+    }
+
+    snmp_set(host, update_params)
+
+    host_name = body["name"]
+    host_contact = body["contact"]
+    host_loc = body["location"]
+    host_desc = body["description"]
+
+    _, rcvs = get_snmp_config()
+    with open(f"{os.getcwd()}/templates/mib_message.html", "r") as template:
+        msg_body = template.read()
+        msg_body = msg_body.replace("{IP}", host)
+        msg_body = msg_body.replace("{DEVICE}", f"{host_name} - {host}")
+        str_update = f"Nombre: {host_name}<br/>"
+        str_update += f"Informacion de contacto: {host_contact}<br/>"
+        str_update += f"Informacion de ubicacion: {host_loc}<br/>"
+        str_update += f"Descripcion: {host_desc}"
+
+        msg_body = msg_body.replace("{MODS}", str_update)
+
+        msg_body = msg_body.replace("{sentAt}", datetime.now().strftime("%d-%m-%Y %H:%M:%S"))
+        img_data = None
+        with open(f"{os.getcwd()}/templates/router_email.png", "rb") as rt:
+            img_data = rt.read()
+
+        save_notify("networknotify@noreply.ipn", rcvs, "Servicio de notificaciones", msg_body, img_data)
+
+    return netapi_response({"message": "Se ha enviado la informacion mib"}, 200)

@@ -30,35 +30,35 @@ def save_notify(remitente, destino, asunto, mensaje, imagen, log = None, db = No
 
 @netapi_decorator("general", "emails_queue")
 def notify_service(log = None, db = None):
-    while(True):
-        if(check_internet_status()):
-            # Conexion activa, enviar los correos
-            pending_emails = list(db.find({}).limit(10))
-            emails_sent = []
-            if(len(pending_emails) == 0):
-                log.info("Sin emails pendientes")
-            else:
-                for email in pending_emails:
-                    sender = email["sender"]
-                    dest = email["to"]
-                    sub = email["subject"]
-                    body = email["body"]
-                    img_data = email["image"]
-                    log.info(f"Enviando email: {str(email['_id'])}")
-                    send_email_message(sender, dest, sub, body, img_data)
-                    emails_sent.append( ObjectId(email["_id"]))
-                log.info(f"Emails enviados: {len(emails_sent)}")
-                db.delete_many({ "_id": { "$in": emails_sent } })
-            sleep(10)
+    if(check_internet_status()):
+        # Conexion activa, enviar los correos
+        pending_emails = list(db.find({}).limit(10))
+        emails_sent = []
+        if(len(pending_emails) == 0):
+            log.info("Sin emails pendientes")
         else:
-            # La conexion no esta activa, seguir esperando
-            log.info("Sin conexion a internet, esperando 5 segundos")
-            sleep(5)
-            
-def notify_daemon():
-    emails_pr = multiprocessing.Process(target=notify_service)
-    emails_pr.start()
-    print("Notify Process started")
+            for email in pending_emails:
+                sender = email["sender"]
+                dest = email["to"]
+                sub = email["subject"]
+                body = email["body"]
+                img_data = email["image"]
+                log.info(f"Enviando email: {str(email['_id'])}")
+                send_email_message(sender, dest, sub, body, img_data)
+                emails_sent.append( ObjectId(email["_id"]))
+            log.info(f"Emails enviados: {len(emails_sent)}")
+            db.delete_many({ "_id": { "$in": emails_sent } })
+        sleep(10)
+    else:
+        # La conexion no esta activa, seguir esperando
+        log.info("Sin conexion a internet, esperando 5 segundos")
+        sleep(30)
+
+@netapi_decorator("general")
+def notify_daemon(log = None):
+    log.warning("Iniciando el servicio de notificaciones via email")
+    while(True):
+        notify_service()
 
 if __name__ == "__main__":
     notify_daemon()

@@ -13,7 +13,7 @@ from api.utils.configs import get_general_config
 from api.utils.decorators import netapi_decorator
 from api.utils.mapping import check_snmp_in_router, get_ip_from_local_address, get_os_in_network, get_router_protocols, get_ssh_status, get_users_in_router, \
     login_into_router, get_router_hostname, get_interfaces_info, get_cdp_output
-from api.utils.snmpy import COMMANDS, snmp_get
+
 
 @netapi_decorator("mapping", "configurations")
 def get_wait_interval(log=None, db=None):
@@ -22,7 +22,8 @@ def get_wait_interval(log=None, db=None):
         TIMER = 120
     else:
         TIMER = configs_in_db[0]["map_interval"] if "map_interval" in configs_in_db[0] else 120
-        log.debug(f"Tiempo de espera en el mapeo: {TIMER}")
+    
+    log.debug(f"Tiempo de espera en el mapeo: {TIMER}")
     return TIMER
 
 
@@ -138,5 +139,22 @@ def start_mapping(log=None, db=None):
     log.info(f"Tiempo de mapeo: {end - start} segundos")
 
 
+@netapi_decorator("mapping", "configs")
+def run_daemon(log = None, db = None):
+    log.warning("Iniciando el demonio de mapeo de topologia...")
+    while(True):
+        configs = db.find_one({},{"map_interval": 1})
+        interval = 0
+        if configs is not None and "map_interval" in configs:
+            interval = configs["map_interval"]
+        else:
+            interval = 120
+        
+        start_mapping()
+        log.info(f"Mapeador de topologia esperando: {interval}")
+        sleep(interval)
+
+
 if __name__ == "__main__":
-    start_mapping()
+    #start_mapping()
+    run_daemon()

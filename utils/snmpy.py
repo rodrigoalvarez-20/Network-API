@@ -2,18 +2,23 @@ from api.utils.configs import get_gns3_config, get_snmp_config
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp import hlapi
 
+#"1.3.6.1.2.1.1.1",
+#"1.3.6.1.2.1.1.2",
+#"1.3.6.1.2.1.1.3",
+#"1.3.6.1.2.1.1.4",
+#"1.3.6.1.2.1.1.5",
+#"1.3.6.1.2.1.1.6"
 COMMANDS = {
     "DESC": cmdgen.MibVariable("SNMPv2-MIB", "sysDescr", 0),
     "ID": cmdgen.MibVariable("SNMPv2-MIB", "sysObjectID", 0),
     "UPTIME": cmdgen.MibVariable("SNMPv2-MIB", "sysUpTime", 0),
     "CONTACT": cmdgen.MibVariable("SNMPv2-MIB", "sysContact", 0),
     "NAME": cmdgen.MibVariable("SNMPv2-MIB", "sysName", 0),
-    "LOCATION": cmdgen.MibVariable("SNMPv2-MIB", "sysLocation", 0),
-    "INT_DESC": cmdgen.MibVariable("IF-MIB", "ifDescr", 0)
+    "LOCATION": cmdgen.MibVariable("SNMPv2-MIB", "sysLocation", 0)
 }
 
 usr, pwd = get_gns3_config()
-group = get_snmp_config()
+group, _ = get_snmp_config()
 
 hlapi.UsmUserData(usr, 
     authKey=pwd, 
@@ -86,8 +91,8 @@ def cast(value):
 
 if __name__ == "__main__":
     print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))
-    snmp_set("192.168.3.254", {COMMANDS["CONTACT"]: "Router admin"})
-    print(snmp_get("192.168.2.254", [COMMANDS["CONTACT"]]))
-    print(snmp_get("192.168.3.254", [COMMANDS["CONTACT"]]))
+    snmp_set("192.168.1.254", {COMMANDS["CONTACT"]: "Router admin mod"})
+    print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))
+    #print(snmp_get("192.168.3.254", [COMMANDS["CONTACT"]]))
     #snmp_set("192.168.1.254", {COMMANDS["CONTACT"]: "Una simple descripcion"})
     #print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))

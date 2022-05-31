@@ -64,9 +64,10 @@ def get_general_config():
 def get_snmp_config():
     if not parser.read(route):
         print(def_msg_err)
-    if parser.has_option("SNMP", "group"):
+    if parser.has_option("SNMP", "group") and parser.has_option("SNMP", "notify_rcvs"):
         group = parser.get("SNMP", "group")
-        return group
+        rcvs = parser.get("SNMP", "notify_rcvs")
+        return group, rcvs
     else:
         print(def_msg_err + " [SNMP]")
 

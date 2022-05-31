@@ -1,8 +1,7 @@
 from datetime import datetime
 import json
-import time, subprocess
+import subprocess
 from api.utils.decorators import routes, LOGS_PATH, netapi_decorator
-from pprint import pprint
 
 @netapi_decorator("general", None)
 def get_logger_output(logname = None, log = None):
