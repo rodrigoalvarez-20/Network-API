@@ -130,14 +130,10 @@ def send_metrics_data(log = None):
                     "out_err": metrics_raw["out_errors"][::-1][:14][::-1]
                 }
                 
-                print("Sending data")
                 emit("metrics_data", data)
-
             else:
-                print("Sending error")
                 emit("metrics_error", {"error": "Metricas de la interfaz inexistentes"})
         else:
-            print("Sending error")
             emit("metrics_error", { "error": "El valor del query es invalido" })
         log.info(f"Esperando {interval} segundos para enviar las metricas")
         socketio.sleep(interval)

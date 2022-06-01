@@ -1,6 +1,0 @@
- prev_in_packets = device_metrics["in_packets"][::-1][0]["y"] # Es un arreglo de elementos { "x": stamp, "y": entero|None }
-                        prev_in_disc_packets = device_metrics["in_discards"][::-1][0]["y"]
-                        prev_in_err_packets = device_metrics["in_errors"][::-1][0]["y"]
-                        prev_out_packets = device_metrics["out_packets"][::-1][0]["y"]
-                        prev_out_disc_packets = device_metrics["out_discards"][::-1][0]["y"]
-                        prev_out_err_packets = device_metrics["out_errors"][::-1][0]["y"]
