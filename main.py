@@ -1,6 +1,7 @@
 import json
 from flask import Flask, request
 from flask_cors import CORS
+from api.utils.monitor_socket import update_selected_metrics_interface
 
 from api.utils.response import netapi_response
 from api.utils.decorators import netapi_decorator
@@ -52,8 +53,6 @@ app.add_url_rule("/api/routers/monitor", "get_monitor_config", get_monitor_confi
 
 app.add_url_rule("/api/routers/mib/<host>", "get_mib_info", get_mib_info, methods=["GET"])
 app.add_url_rule("/api/routers/mib/<host>", "update_mib_info", update_mib_info, methods=["POST"])
-
-#app.add_url_rule("/api/routers/protocol", "modify_router_protocol", modify_router_protocol, methods=["POST"])
 
 @app.get("/api")
 @netapi_decorator("general", None)
@@ -109,33 +108,43 @@ def get_monitored_data():
         socketio.sleep(60)
 
 @socketio.on("get_metrics")
-def send_metrics_data(query: str):
-    while(1):
+@netapi_decorator("monitor")
+def send_metrics_data(log = None):
+    while(True):
         # Obtener el intervalo de actualizacion
-        interval, _, _ = get_monitor_configurations()
+        interval, _, _, selected = get_monitor_configurations()
+        # Obtener desde las configuraciones, la interfaz actual para monitorear (mostrar metricas)
+        
         # Dada la query IP + Nombre dispositivo, buscar los datos
-        if query is not None and query != "":
-            filter = json.loads(query)
-            metrics_raw = get_metrics_from_device(filter["ip"], filter["device"])
+        if selected is not None and selected != {}:
+            #filter = json.loads(query)
+            metrics_raw = get_metrics_from_device(selected["ip"], selected["device"])
             # Parsear los datos, ya que solo quiero enviar los ultimos 20 elementos [::-1][:20]
             if metrics_raw is not None:
                 data = {
-                    "in_packets": metrics_raw["in_packets"][::-1][:20],
-                    "in_disc": metrics_raw["in_discards"][::-1][:20],
-                    "in_err": metrics_raw["in_errors"][::-1][:20],
-                    "out_packets": metrics_raw["out_packets"][::-1][:20],
-                    "out_disc" : metrics_raw["out_discards"][::-1][:20],
-                    "out_err": metrics_raw["out_errors"][::-1][:20]
+                    "in_packets": metrics_raw["in_packets"][::-1][:14][::-1],
+                    "in_disc": metrics_raw["in_discards"][::-1][:14][::-1],
+                    "in_err": metrics_raw["in_errors"][::-1][:14][::-1],
+                    "out_packets": metrics_raw["out_packets"][::-1][:14][::-1],
+                    "out_disc" : metrics_raw["out_discards"][::-1][:14][::-1],
+                    "out_err": metrics_raw["out_errors"][::-1][:14][::-1]
                 }
                 
+                print("Sending data")
                 emit("metrics_data", data)
 
             else:
+                print("Sending error")
                 emit("metrics_error", {"error": "Metricas de la interfaz inexistentes"})
         else:
+            print("Sending error")
             emit("metrics_error", { "error": "El valor del query es invalido" })
-
+        log.info(f"Esperando {interval} segundos para enviar las metricas")
         socketio.sleep(interval)
+
+@socketio.on("set_selected_interface")
+def update_selected_interface(data: dict):
+    update_selected_metrics_interface(data["interfaces"]["name"], data["addr"])
 
 
 @socketio.on('disconnect')

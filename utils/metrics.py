@@ -14,6 +14,7 @@ def get_monitor_configurations(log=None, db=None):
         interface_interval = 10
         disc_pkts_per = 10
         dmg_pkts_per = 10
+        selectedInterface = None
 
         if "interface_interval" in configs:
             interface_interval = int(configs["interface_interval"])
@@ -23,8 +24,11 @@ def get_monitor_configurations(log=None, db=None):
 
         if "damaged_packets_percentage" in configs:
             dmg_pkts_per = int(configs["damaged_packets_percentage"])
+        
+        if "selected_interface" in configs:
+            selectedInterface = configs["selected_interface"]
 
-        return interface_interval, disc_pkts_per, dmg_pkts_per
+        return interface_interval, disc_pkts_per, dmg_pkts_per, selectedInterface
 
 
 @netapi_decorator("monitor", "monitor")

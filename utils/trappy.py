@@ -37,9 +37,12 @@ def traps_cb(engine, data_2, ctx_id, ctx_name, var_binds, data, db = None, log =
     version =  exec_context['securityModel']
     group_name = exec_context['securityName']
     
-    send_notify = 1
+    send_notify = True
     lines = [ f"{translate(name.prettyPrint())} == {name.prettyPrint()} == {val.prettyPrint()}\n" for name, val in var_binds ]
-    send_notify = lines[2] not in excluded_oids
+    for ex in excluded_oids:
+        if  ex.find(lines[2].split(" == ")[1]) >= 0:
+            send_notify = False
+            break 
     
     if send_notify:
         _, rcvs = get_snmp_config()

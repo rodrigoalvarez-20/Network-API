@@ -1,4 +1,3 @@
 #!/bin/bash
-
 export PYTHONPATH=/home/gns3/Documents/asr_network/
-~/Documents/asr_network/api/venv/bin/python utils/trappy.py &
+/home/gns3/Documents/asr_network/api/venv/bin/python /home/gns3/Documents/asr_network/api/utils/trappy.py &

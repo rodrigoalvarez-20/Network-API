@@ -13,6 +13,7 @@ def get_logger_output(logname = None, log = None):
     f = subprocess.getoutput(f"cat {file_name}").splitlines()
 
     if f[0].find("No such file or directory") != -1:
+        print("In log error")
         log.warning("Archivo de logs no encontrado")
         return None
 

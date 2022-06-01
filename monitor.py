@@ -238,7 +238,7 @@ def monitor_service(disc_pkts_per, dmg_pkts_per, log = None):
 @netapi_decorator("monitor")
 def run_service(log = None):
     log.warning("Iniciando servicio de monitoreo")
-    interface_interval, disc_pkts_per, dmg_pkts_per = get_monitor_configurations()
+    interface_interval, disc_pkts_per, dmg_pkts_per, _ = get_monitor_configurations()
     while(True):
         monitor_service(disc_pkts_per, dmg_pkts_per)
         log.info(f"Monitor esperando {interface_interval} segundos...")
