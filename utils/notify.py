@@ -7,8 +7,8 @@ from api.utils.common import send_email_message
 from bson.objectid import ObjectId
 
 def check_internet_status():
-    url = "http://google.com"
-    timeout = 5
+    url = "https://gmail.com"
+    timeout = 20
     try:
         req = requests.get(url, timeout=timeout)
         return True

@@ -9,6 +9,8 @@ from pprint import pprint
 
 from time import sleep, time
 import json
+
+import pexpect
 from api.utils.configs import get_general_config
 from api.utils.decorators import netapi_decorator
 from api.utils.mapping import check_snmp_in_router, get_ip_from_local_address, get_os_in_network, get_router_protocols, get_ssh_status, get_users_in_router, \
@@ -32,12 +34,12 @@ def start_mapping(log=None, db=None):
     log.info("Iniciando el proceso de mapeo")
     start = time()
     _, _, _, _, excluded_nets = get_general_config()
-    # nets = get_ip_from_local_address(excluded_nets)
+    #nets = get_ip_from_local_address(excluded_nets)
     routers_net = []
-    # for net in nets:
+    #for net in nets:
     #    routers_net += get_os_in_network(net)
 
-    routers_net.append("10.0.0.254")
+    routers_net.append("128.0.0.254")
 
     log.info(f"Redes disponibles: {','.join(routers_net)}")
 
@@ -80,7 +82,18 @@ def start_mapping(log=None, db=None):
         for i, data in enumerate(cdp_data):
             # Moverse a los siguientes routers
             actual_route.append(data["address"])
-            child_tn = login_into_router(actual_route)
+            while(len(actual_route) != 0):
+                try:
+                    child_tn = login_into_router(actual_route)
+                    break
+                except pexpect.TIMEOUT:
+                    actual_route.pop(i-1)
+            
+            if (len(actual_route) == 0):
+                # Ha ocurrido un error al mapear, seguramente por falta de disponibilidad o error en las rutas
+                log.error("Se han sacado todas las rutas antes de terminar el mapeo. Abortando")
+                break
+                
             ch_hostname = get_router_hostname(child_tn)
             ch_users = get_users_in_router(child_tn)
             child_interfaces = get_interfaces_info(child_tn)
@@ -116,8 +129,7 @@ def start_mapping(log=None, db=None):
                 cdp_data.insert(i+j+1, c)
 
             if len(ch_cdp) == 0:
-                for i in range(0, len(actual_route) - 1):
-                    actual_route.pop()
+                actual_route.pop()
                 child_tn.close(True)
 
         if len(actual_route) != 0:
@@ -125,8 +137,8 @@ def start_mapping(log=None, db=None):
 
     end = time()
 
-    with open("topo_map.json", "w") as f:
-        f.write(json.dumps(routers_map))
+    """ with open("topo_map.json", "w") as f:
+        f.write(json.dumps(routers_map)) """
 
         
     log.info("Se ha terminado de mapear la red")

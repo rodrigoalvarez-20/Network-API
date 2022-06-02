@@ -2,8 +2,6 @@
 import json
 from flask import Response, request
 from api.utils.decorators import netapi_decorator
-from pymongo import ReturnDocument
-from bson.objectid import ObjectId
 from api.utils.session_auth import validate_session
 from api.utils.response import netapi_response
 

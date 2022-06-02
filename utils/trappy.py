@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from pprint import pprint
 import subprocess
 from pysnmp.entity import engine, config
 from pysnmp.carrier.asyncore.dgram import udp
@@ -13,7 +14,7 @@ snmp_engine = engine.SnmpEngine()
 
 usr, pwd = get_gns3_config()
 
-excluded_oids = [ "1.3.6.1.4.1.9.9.43","1.3.6.1.4.1.9.9.138"]
+excluded_oids = [ "1.3.6.1.4.1.9.9.43","1.3.6.1.4.1.9.9.138", "1.3.6.1.4.1.9.2.9.3.1.1.2.1", "1.3.6.1.6.3.1.1.4.1.0"]
 
 config.addTransport(snmp_engine, udp.domainName + (1,),
                     udp.UdpTransport().openServerMode(("0.0.0.0", 162)))
@@ -36,11 +37,12 @@ def traps_cb(engine, data_2, ctx_id, ctx_name, var_binds, data, db = None, log =
     sender = '@'.join([str(x) for x in exec_context['transportAddress']])
     version =  exec_context['securityModel']
     group_name = exec_context['securityName']
-    
     send_notify = True
     lines = [ f"{translate(name.prettyPrint())} == {name.prettyPrint()} == {val.prettyPrint()}\n" for name, val in var_binds ]
+    oid_data = lines[2].split(" == ")[1]
+    
     for ex in excluded_oids:
-        if  ex.find(lines[2].split(" == ")[1]) >= 0:
+        if  oid_data.find(ex) != -1:
             send_notify = False
             break 
     
@@ -78,7 +80,7 @@ def traps_cb(engine, data_2, ctx_id, ctx_name, var_binds, data, db = None, log =
             with open(f"{os.getcwd()}/templates/router_email.png", "rb") as rt:
                 img_data = rt.read()
 
-            save_notify("networknotify@noreply.ipn", rcvs, "Servicio de notificaciones", body, img_data)
+            #save_notify("networknotify@noreply.ipn", rcvs, "Servicio de notificaciones", body, img_data)
 
 ntfrcv.NotificationReceiver(snmp_engine, traps_cb)
 

@@ -9,12 +9,12 @@ from pysnmp import hlapi
 #"1.3.6.1.2.1.1.5",
 #"1.3.6.1.2.1.1.6"
 COMMANDS = {
-    "DESC": cmdgen.MibVariable("SNMPv2-MIB", "sysDescr", 0),
-    "ID": cmdgen.MibVariable("SNMPv2-MIB", "sysObjectID", 0),
-    "UPTIME": cmdgen.MibVariable("SNMPv2-MIB", "sysUpTime", 0),
-    "CONTACT": cmdgen.MibVariable("SNMPv2-MIB", "sysContact", 0),
-    "NAME": cmdgen.MibVariable("SNMPv2-MIB", "sysName", 0),
-    "LOCATION": cmdgen.MibVariable("SNMPv2-MIB", "sysLocation", 0)
+    "DESC": "1.3.6.1.2.1.1.1.0",
+    "ID": "1.3.6.1.2.1.1.2.0",
+    "UPTIME": "1.3.6.1.2.1.1.3.0",
+    "CONTACT": "1.3.6.1.2.1.1.4.0",
+    "NAME": "1.3.6.1.2.1.1.5.0",
+    "LOCATION": "1.3.6.1.2.1.1.6.0"
 }
 
 usr, pwd = get_gns3_config()
@@ -64,8 +64,8 @@ def fetch(handler, count):
                     items[itm_name] = cast(var_bind[1])
                 result.append(items)
             else:
-                return [{"error": str(error_indication)}]
-                #raise RuntimeError('SNMP error: {0}'.format(error_indication))
+                #return [{"error": str(error_indication)}]
+                raise RuntimeError('SNMP error: {0}'.format(error_indication))
         except StopIteration:
             break
     return result
@@ -90,9 +90,8 @@ def cast(value):
     return value
 
 if __name__ == "__main__":
-    print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))
-    snmp_set("192.168.1.254", {COMMANDS["CONTACT"]: "Router admin mod"})
-    print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))
-    #print(snmp_get("192.168.3.254", [COMMANDS["CONTACT"]]))
-    #snmp_set("192.168.1.254", {COMMANDS["CONTACT"]: "Una simple descripcion"})
-    #print(snmp_get("192.168.1.254", [COMMANDS["CONTACT"]]))
+    #print(snmp_get("128.0.0.254", ["1.3.6.1.2.1.1.4.0"]))
+    print(snmp_set("128.0.0.254", {"1.3.6.1.2.1.1.4.0": "test Value"}))
+    print(snmp_get("128.0.0.254", ["1.3.6.1.2.1.1.4.0"]))
+    #snmp_set("128.0.0.254", {COMMANDS["CONTACT"]: "Router admin", COMMANDS["LOCATION"]: "Lab-2"})
+    #print(snmp_get("128.0.0.254", [COMMANDS["CONTACT"], COMMANDS["LOCATION"]]))

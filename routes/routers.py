@@ -127,7 +127,7 @@ def modify_router_config(log=None, db=None):
         activate = bool(request_body["snmp-v3"])
         if activate == True:
             usr, pwd, secret, vty = get_gns3_ssh_config()
-            inets = get_ip_from_local_address(["192.168.100.0"])
+            inets = get_ip_from_local_address(["192.168.100.0", "192.168.20.0"])
             ips = ["2".join(x.rsplit("0", 1)) for x in inets]
             print(ips)
             commands = [f"snmp-server community asr_network rw", f"snmp-server group {group} v3 auth write V3Write", 
@@ -281,6 +281,13 @@ def config_monitor(log=None, db=None):
         if "interfaces" in request_body:
             params["interfaces"] = request_body["interfaces"]
 
+        print(device)
+
+        db.delete_one({"device": device})
+
+        # Borrar configuracion de interfaz seleccionada
+        reset_selected_interface()
+
         db.update_one({"device": device}, {"$set": params}, upsert=True)
 
         return netapi_response({"message": "Se ha actualizado la configuración de monitoreo"}, 200)
@@ -296,6 +303,12 @@ def get_monitor_config(log=None, db=None):
     configs = list(db.find({}, {"_id": 0}))
 
     return netapi_response({"configs": configs}, 200)
+
+@netapi_decorator("network", "configs")
+def reset_selected_interface(log = None, db =  None):
+    db.update_many({}, {"$set": {"selected_interface": {}}})
+    
+
 
 @netapi_decorator("network")
 def get_mib_info(host: str = "", log = None):
@@ -337,16 +350,14 @@ def update_mib_info(host: str, log = None):
     update_params = {
         COMMANDS["CONTACT"]: body["contact"],
         COMMANDS["NAME"]: body["name"],
-        COMMANDS["LOCATION"]: body["location"],
-        COMMANDS["DESC"]: body["description"]
+        COMMANDS["LOCATION"]: body["location"]
     }
-
+    
     snmp_set(host, update_params)
 
     host_name = body["name"]
     host_contact = body["contact"]
     host_loc = body["location"]
-    host_desc = body["description"]
 
     _, rcvs = get_snmp_config()
     with open(f"{os.getcwd()}/templates/mib_message.html", "r") as template:
@@ -356,7 +367,6 @@ def update_mib_info(host: str, log = None):
         str_update = f"Nombre: {host_name}<br/>"
         str_update += f"Informacion de contacto: {host_contact}<br/>"
         str_update += f"Informacion de ubicacion: {host_loc}<br/>"
-        str_update += f"Descripcion: {host_desc}"
 
         msg_body = msg_body.replace("{MODS}", str_update)
 

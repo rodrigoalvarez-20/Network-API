@@ -25,7 +25,7 @@ CORS(app)
 ah, ap, ch, cp, _ = get_general_config()
 
 socketio = SocketIO(app, cors_allowed_origins=[f"http://{ch}:{cp}", "http://192.168.100.141:3000"],
-                    always_connect=True, async_mode="threading")
+                    always_connect=True)
 
 
 #Seccion de usuarios de aplicacion
@@ -79,9 +79,18 @@ def validate_token_reset(log = None):
 def error_handler():
     return netapi_response({"error":"Recurso no encontrado"}, 400)
 
-@socketio.on('connect')
-def verify_socket_connection():
+global SEND_LOGS, SEND_METRICS, SEND_AVAILABLE_DEV
+SEND_LOGS = None
+SEND_METRICS = None
+SEND_AVAILABLE_DEV = None
+
+@socketio.on("connect")
+def start_socket():
     log_name, timer = get_logger_prefs()
+    global SEND_LOGS, SEND_METRICS, SEND_AVAILABLE_DEV
+    SEND_LOGS = True
+    SEND_METRICS = True
+    SEND_AVAILABLE_DEV = True
     emit('conn-resp', {'message': 'Ok', "log_name": log_name, "interval": timer})
 
 @socketio.on("update_selected_log_prefs")
@@ -92,25 +101,41 @@ def update_selected_log(actual):
 def update_timer_log(timer):
     save_logger_prefs(None, timer)
 
+@socketio.on("set_selected_interface")
+def update_selected_interface(data: dict):
+    update_selected_metrics_interface(data["interfaces"]["name"], data["addr"])
+
 @socketio.on("get_log")
 def send_logs_data():
-    while(True):
+    global SEND_LOGS
+    while(SEND_LOGS):
         log_name, timer = get_logger_prefs()
         log_data = get_logger_output(log_name)
         emit("log_data", { "log": log_data, "name": log_name})
         socketio.sleep(timer)
+        if not SEND_LOGS:
+            break
 
 @socketio.on("get_monitored_interfaces")
-def get_monitored_data():
-    while(True):
+def get_monitored_interfaces_names():
+    global SEND_AVAILABLE_DEV
+    while(SEND_AVAILABLE_DEV):
         monitored_interfaces = get_monitored_interfaces()
-        emit("devices_monitoring",  monitored_interfaces )
+        print(monitored_interfaces)
+        _, _, _, selected = get_monitor_configurations()
+        if "device" in selected:
+            emit("devices_monitoring",  { "actual": { "device": selected["device"], "addr": selected["ip"] }, "devices": monitored_interfaces } )
+        else:
+            emit("devices_monitoring",  { "actual": {}, "devices": monitored_interfaces } )
         socketio.sleep(60)
+        if not SEND_AVAILABLE_DEV:
+            break
 
 @socketio.on("get_metrics")
 @netapi_decorator("monitor")
 def send_metrics_data(log = None):
-    while(True):
+    global SEND_METRICS
+    while(SEND_METRICS):
         # Obtener el intervalo de actualizacion
         interval, _, _, selected = get_monitor_configurations()
         # Obtener desde las configuraciones, la interfaz actual para monitorear (mostrar metricas)
@@ -134,18 +159,21 @@ def send_metrics_data(log = None):
             else:
                 emit("metrics_error", {"error": "Metricas de la interfaz inexistentes"})
         else:
-            emit("metrics_error", { "error": "El valor del query es invalido" })
+            emit("metrics_error", { "error": "No existe configuracion para monitoreo de interfaz" })
         log.info(f"Esperando {interval} segundos para enviar las metricas")
         socketio.sleep(interval)
+        if not SEND_METRICS:
+            break
 
-@socketio.on("set_selected_interface")
-def update_selected_interface(data: dict):
-    update_selected_metrics_interface(data["interfaces"]["name"], data["addr"])
 
 
 @socketio.on('disconnect')
-def test_disconnect():
+def end_socket():
     print('Cliente desconectado')
+    global SEND_LOGS, SEND_METRICS, SEND_AVAILABLE_DEV
+    SEND_LOGS = False
+    SEND_METRICS = False
+    SEND_AVAILABLE_DEV = False
 
 
 if __name__ == "__main__":
